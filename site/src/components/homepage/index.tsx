@@ -7,6 +7,7 @@ import { TextMorph } from "torph";
 import { Footer } from "../footer";
 import { Button } from "../button";
 import { CodeBlock } from "../codeblock";
+import { InstallCommands } from "./install-cmd";
 
 const ReactLogo = () => (
   <svg
@@ -38,15 +39,9 @@ const texts = [
   //"Fluidly Animate Text across multiple lines",
   //"Multiple lines of animated text!",
 ];
-const pkgCmds = {
-  npm: "npm i torph",
-  pnpm: "pnpm i torph",
-  yarn: "yarn add torph",
-};
 
 export default function Home() {
   const [textIndex, setTextIndex] = useState(0);
-  const [cmdIndex, setCmdIndex] = useState(0);
 
   useEffect(() => {
     const interval = setTimeout(() => {
@@ -88,24 +83,7 @@ export default function Home() {
           </Button>
         </div>
 
-        <div className={styles.install}>
-          <div className={styles.commands}>
-            {Object.keys(pkgCmds).map((cmd, i) => (
-              <button
-                key={cmd}
-                onClick={() => setCmdIndex(i)}
-                data-active={i === cmdIndex}
-              >
-                {cmd}
-              </button>
-            ))}
-          </div>
-          <code>
-            <TextMorph>
-              {pkgCmds[Object.keys(pkgCmds)[cmdIndex] as keyof typeof pkgCmds]}
-            </TextMorph>
-          </code>
-        </div>
+        <InstallCommands />
 
         <div className={styles.example}>
           <CodeBlock
