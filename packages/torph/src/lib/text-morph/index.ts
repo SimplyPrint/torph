@@ -144,6 +144,10 @@ export class TextMorph {
         `translate(${deltaX}px, ${deltaY}px) scale(${isNew ? 0.8 : 1})`,
       );
       child.style.setProperty("--opacity", isNew ? "0" : "1");
+      child.style.setProperty(
+        "--delay",
+        isNew ? `${this.options.duration! * 0.2}ms` : `0ms`,
+      );
     });
   }
 
@@ -165,6 +169,7 @@ export class TextMorph {
   [torph-item] {
       display: inline-block;
       transition-duration: inherit;
+      transition-delay: var(--delay, 0ms);
       transition-timing-function: inherit;
       transition-property: opacity, transform;
       will-change: opacity, transform;
