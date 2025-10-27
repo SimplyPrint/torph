@@ -101,14 +101,11 @@ export class TextMorph {
     const children = Array.from(this.element.children) as HTMLElement[];
 
     children.forEach((child) => {
-      // temporarily remove
       const parent = child.parentElement!;
       parent.removeChild(child);
 
-      // force a reflow
       void child.offsetHeight;
 
-      // re-insert
       parent.appendChild(child);
     });
   }
@@ -161,6 +158,7 @@ export class TextMorph {
 [torph-root],
 [torph-group] {
   display: inline-flex; /* TODO: remove for multi-line support */
+  position: relative;
   transition-duration: ${this.options.duration}ms;
   transition-timing-function: ${this.options.ease};
   transition-property: width, height;
