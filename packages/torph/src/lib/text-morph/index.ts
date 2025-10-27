@@ -157,13 +157,12 @@ export class TextMorph {
   
   [torph-root],
   [torph-group] {
-      display:inline-flex;
-      position:relative;
+      display: inline-flex;
+      position: relative;
       transition-duration: ${this.options.duration}ms;
       transition-timing-function: ${this.options.ease};
       transition-property: width, height;
       will-change: width, height;
-      transform:translateZ(10px);
   }
   
   [torph-item] {
@@ -175,6 +174,7 @@ export class TextMorph {
       will-change: opacity, transform;
       transform: none;
       opacity: 1;
+      
       @starting-style {
           transform: var(--invert);
           opacity: var(--opacity);
