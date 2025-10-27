@@ -40,7 +40,46 @@ const texts = [
   //"Multiple lines of animated text!",
 ];
 
+const frameworks = [
+  {
+    name: "React",
+    entrypoint: "torph/react",
+    logo: <ReactLogo />,
+  },
+  {
+    name: "Vue",
+    entrypoint: "torph/vue",
+    logo: (
+      <svg
+        width="21"
+        height="20"
+        viewBox="0 0 21 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <circle cx="10.5" cy="10" r="10" fill="#41B883" />
+      </svg>
+    ),
+  },
+  {
+    name: "Vanilla",
+    entrypoint: "torph",
+    logo: (
+      <svg
+        width="21"
+        height="20"
+        viewBox="0 0 21 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <circle cx="10.5" cy="10" r="10" fill="#f0db4f" />
+      </svg>
+    ),
+  },
+];
+
 export default function Home() {
+  const [frameworkIndex, setFrameworkIndex] = useState(0);
   const [textIndex, setTextIndex] = useState(0);
 
   useEffect(() => {
@@ -57,10 +96,20 @@ export default function Home() {
           <h1>
             <span>
               <strong>Text Morph</strong> for
-            </span>{" "}
-            <ReactLogo /> <strong>React</strong>
+            </span>
+            <button
+              onClick={() => setFrameworkIndex((i) => i + 1)}
+              className={styles.frameworkButton}
+            >
+              {frameworks[frameworkIndex % frameworks.length].logo}
+              <strong>
+                <TextMorph>
+                  {frameworks[frameworkIndex % frameworks.length].name}
+                </TextMorph>
+              </strong>
+            </button>
           </h1>
-          <p>An animated text component.</p>
+          <p>Dependency-free animated text component.</p>
         </div>
 
         <div className={styles.demo}>
@@ -87,11 +136,15 @@ export default function Home() {
 
         <div className={styles.example}>
           <CodeBlock
-            code={`import { TextMorph } from 'torph'
+            code={`import { TextMorph } from '${frameworks[frameworkIndex % frameworks.length].entrypoint}'
         
 <TextMorph>${texts[textIndex % texts.length]}</TextMorph>`}
           >
-            {`import { TextMorph } from 'torph'
+            {`import { TextMorph } from '`}
+            <TextMorph>
+              {frameworks[frameworkIndex % frameworks.length].entrypoint}
+            </TextMorph>
+            {`'
 
 <TextMorph>`}
 

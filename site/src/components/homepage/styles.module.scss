@@ -35,6 +35,13 @@
       font-weight: 500;
     }
   }
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 1rem;
+  }
 }
 
 .docs {
