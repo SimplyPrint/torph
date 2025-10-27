@@ -15,6 +15,7 @@ export class TextMorph {
   constructor(options: TextMorphOptions) {
     this.element = options.element;
     this.element.setAttribute("torph-root", "");
+    if (options.debug) this.element.setAttribute("torph-debug", "");
 
     this.options = {
       locale: "en",
@@ -28,6 +29,7 @@ export class TextMorph {
 
   destroy() {
     this.element.removeAttribute("torph-root");
+    this.element.removeAttribute("torph-debug");
     this.removeStyles();
   }
 
@@ -40,6 +42,8 @@ export class TextMorph {
   }
 
   private createTextGroup(value: string, element: HTMLElement) {
+    if (value === element.innerText) return;
+
     const oldWidth = element.offsetWidth;
     const oldHeight = element.offsetHeight;
 
@@ -154,32 +158,38 @@ export class TextMorph {
   private addStyles() {
     const style = document.createElement("style");
     style.innerHTML = `
-  
-  [torph-root],
-  [torph-group] {
-      display: inline-flex;
-      position: relative;
-      transition-duration: ${this.options.duration}ms;
-      transition-timing-function: ${this.options.ease};
-      transition-property: width, height;
-      will-change: width, height;
+[torph-root],
+[torph-group] {
+  display: inline-flex; /* TODO: remove for multi-line support */
+  transition-duration: ${this.options.duration}ms;
+  transition-timing-function: ${this.options.ease};
+  transition-property: width, height;
+  will-change: width, height;
+}
+
+[torph-item] {
+  display: inline-block;
+  transition-duration: inherit;
+  transition-delay: var(--delay, 0ms);
+  transition-timing-function: inherit;
+  transition-property: opacity, transform;
+  will-change: opacity, transform;
+  transform: none;
+  opacity: 1;
+
+  @starting-style {
+    transform: var(--invert);
+    opacity: var(--opacity);
   }
+}
   
+[torph-root][torph-debug] {
+  outline:2px solid magenta;
   [torph-item] {
-      display: inline-block;
-      transition-duration: inherit;
-      transition-delay: var(--delay, 0ms);
-      transition-timing-function: inherit;
-      transition-property: opacity, transform;
-      will-change: opacity, transform;
-      transform: none;
-      opacity: 1;
-      
-      @starting-style {
-          transform: var(--invert);
-          opacity: var(--opacity);
-      }
-  }  
+    outline:2px solid cyan;
+    outline-offset: -4px;
+  }
+}
   `;
     document.head.appendChild(style);
   }

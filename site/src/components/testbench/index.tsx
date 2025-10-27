@@ -40,7 +40,7 @@ export const Testbench = () => {
           textAlign: latest.textAlignment,
         }}
       >
-        <TextMorph>{latest.text}</TextMorph>
+        <TextMorph debug>{latest.text}</TextMorph>
       </div>
 
       <form>
