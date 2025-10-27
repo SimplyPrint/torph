@@ -141,7 +141,7 @@ export class TextMorph {
 
       child.style.setProperty(
         "--invert",
-        `translate(${deltaX}px, ${deltaY}px) scale(${isNew ? 0.8 : 1})`,
+        `translate(${deltaX}px, ${deltaY}px) scale(${isNew ? 0.95 : 1})`,
       );
       child.style.setProperty("--opacity", isNew ? "0" : "1");
       child.style.setProperty(
