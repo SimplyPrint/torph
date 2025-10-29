@@ -107,18 +107,25 @@ const locales = {
     "Anima texto sin interrupciones",
     "Anima texto con fluidez",
   ],
-  fr: [
-    "Animez le texte facilement",
-    "Animez le texte sans effort",
-    "Animez le texte en douceur",
-    "Animez le texte avec fluidité",
-  ],
   ja: [
     "テキストを簡単にアニメーション",
     "テキストをスムーズにアニメーション",
     "テキストを自然にアニメーション",
     "テキストを流れるようにアニメーション",
   ],
+  ko: [
+    "텍스트를 쉽게 애니메이션화",
+    "텍스트를 원활하게 애니메이션화",
+    "텍스트를 자연스럽게 애니메이션화",
+    "텍스트를 부드럽게 애니메이션화",
+  ],
+  ar: [
+    "حرّك النص بسهولة",
+    "حرّك النص بانسيابية",
+    "تحريك النص بسلاسة",
+    "تحريك النص بشكل طبيعي",
+  ],
+  zh: ["轻松动画文字", "流畅动画文字", "自然动画文字", "无缝动画文字"],
 };
 
 const frameworks = [
@@ -143,6 +150,14 @@ const frameworks = [
     logo: <TypeScriptLogo />,
   },
 ];
+const flags = {
+  en: "🇺🇸",
+  es: "🇪🇸",
+  ja: "🇯🇵",
+  ko: "🇰🇷",
+  ar: "🇸🇦",
+  zh: "🇨🇳",
+};
 
 export default function Home() {
   const [frameworkIndex, setFrameworkIndex] = useState(0);
@@ -210,13 +225,8 @@ export default function Home() {
                     onClick={() => setLocale(loc as keyof typeof locales)}
                     data-active={loc === locale}
                   >
-                    {loc === "en"
-                      ? "🇺🇸"
-                      : loc === "es"
-                        ? "🇪🇸"
-                        : loc === "fr"
-                          ? "🇫🇷"
-                          : "🇯🇵"}
+                    {" "}
+                    {flags[loc as keyof typeof flags]}
                   </button>
                 );
               })}
