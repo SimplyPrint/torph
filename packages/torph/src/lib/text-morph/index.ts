@@ -82,7 +82,6 @@ export class TextMorph {
 
     oldChildren.forEach((child) => {
       const id = child.getAttribute("torph-id") as string;
-      console.log(id);
       if (newIds.has(id)) child.remove();
     });
 
@@ -158,6 +157,7 @@ export class TextMorph {
     const measures: Measures = {};
 
     children.forEach((child, index) => {
+      if (child.hasAttribute("torph-exiting")) return;
       const key = child.getAttribute("torph-id") || `child-${index}`;
       measures[key] = {
         x: child.offsetLeft,
@@ -172,6 +172,7 @@ export class TextMorph {
     const children = Array.from(this.element.children) as HTMLElement[];
 
     children.forEach((child, index) => {
+      if (child.hasAttribute("torph-exiting")) return;
       const key = child.getAttribute("torph-id") || `child-${index}`;
       const prev = this.prevMeasures[key];
       const current = this.currentMeasures[key];
@@ -210,6 +211,9 @@ export class TextMorph {
   display: inline-flex; /* TODO: remove for multi-line support */
   position: relative;
   will-change: width, height;
+  transition-duration: ${this.options.duration}ms;
+  transition-timing-function: ${this.options.ease};
+  transition-property: width, height;
 }
 
 [torph-item] {
