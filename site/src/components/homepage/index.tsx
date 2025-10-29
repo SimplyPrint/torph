@@ -182,7 +182,9 @@ export default function Home() {
         </div>
 
         <div className={styles.demo}>
-          <TextMorph>{texts[textIndex % texts.length]}</TextMorph>
+          <TextMorph locale={locale}>
+            {texts[textIndex % texts.length]}
+          </TextMorph>
 
           <div>
             <Button onClick={() => setTextIndex((i) => i + 1)}>
@@ -228,7 +230,7 @@ export default function Home() {
           <CodeBlock
             code={`import { TextMorph } from '${frameworks[frameworkIndex % frameworks.length].entrypoint}'
         
-<TextMorph>${texts[textIndex % texts.length]}</TextMorph>`}
+<TextMorph locale='${locale}'>${texts[textIndex % texts.length]}</TextMorph>`}
           >
             {`import { TextMorph } from '`}
             <TextMorph>
@@ -236,9 +238,13 @@ export default function Home() {
             </TextMorph>
             {`'
 
-<TextMorph>`}
+<TextMorph locale='`}
+            <TextMorph>{locale}</TextMorph>
+            {`'>`}
 
-            <TextMorph>{texts[textIndex % texts.length]}</TextMorph>
+            <TextMorph locale={locale}>
+              {texts[textIndex % texts.length]}
+            </TextMorph>
             {`</TextMorph>`}
           </CodeBlock>
         </div>
@@ -247,3 +253,46 @@ export default function Home() {
     </div>
   );
 }
+/*
+const vanillaExample = `
+import { TextMorph } from 'torph';
+
+const textmorph = new TextMorph({
+  element: document.getElementById('morph'),
+  {
+    locale: 'en'
+  }
+});
+
+textmorph.update('Animate Text Easily');
+`;
+
+const reactExample = `
+import { TextMorph } from 'torph/react';
+
+<TextMorph locale='en'>Animate Text Easily</TextMorph>
+`;
+
+const vueExample = `
+<template>
+  <TextMorph locale="en">Animate Text Easily</TextMorph>
+</template>
+
+<script>
+import { TextMorph } from 'torph/vue';
+export default {
+  components: {
+    TextMorph
+  }
+}
+</script>
+`;
+
+const svelteExample = `
+<script>
+  import { TextMorph } from 'torph/svelte';
+</script>
+
+<TextMorph locale="en">Animate Text Easily</TextMorph>
+`;
+*/
