@@ -6,8 +6,9 @@ type Measures = {
 
 export class TextMorph {
   private element: HTMLElement;
-
   private options: Omit<TextMorphOptions, "element"> = {};
+
+  private data: HTMLElement | string;
 
   private currentMeasures: Measures = {};
   private prevMeasures: Measures = {};
@@ -16,6 +17,8 @@ export class TextMorph {
     this.element = options.element;
     this.element.setAttribute("torph-root", "");
     if (options.debug) this.element.setAttribute("torph-debug", "");
+
+    this.data = this.element.innerHTML;
 
     this.options = {
       locale: "en",
@@ -34,16 +37,17 @@ export class TextMorph {
   }
 
   update(value: HTMLElement | string) {
-    if (value instanceof HTMLElement) {
+    if (value === this.data) return;
+    this.data = value;
+
+    if (this.data instanceof HTMLElement) {
       // TODO: handle HTMLElement case
     } else {
-      this.createTextGroup(value, this.element);
+      this.createTextGroup(this.data, this.element);
     }
   }
 
   private createTextGroup(value: string, element: HTMLElement) {
-    if (value === element.innerText) return;
-
     const oldWidth = element.offsetWidth;
     const oldHeight = element.offsetHeight;
 
@@ -59,12 +63,15 @@ export class TextMorph {
     const newIds = new Set(blocks.map((b) => b.id));
 
     const exiting = oldChildren.filter(
-      (child) => !newIds.has(child.getAttribute("torph-id") as string),
+      (child) =>
+        !newIds.has(child.getAttribute("torph-id") as string) &&
+        !child.hasAttribute("torph-exiting"),
     );
 
     const parentRect = this.getUnscaledBoundingClientRect(element);
     exiting.forEach((child) => {
       const rect = this.getUnscaledBoundingClientRect(child);
+      child.setAttribute("torph-exiting", "");
       child.style.position = "absolute";
       child.style.pointerEvents = "none";
       child.style.left = `${rect.left - parentRect.left}px`;
@@ -75,6 +82,7 @@ export class TextMorph {
 
     oldChildren.forEach((child) => {
       const id = child.getAttribute("torph-id") as string;
+      console.log(id);
       if (newIds.has(id)) child.remove();
     });
 
@@ -88,10 +96,10 @@ export class TextMorph {
 
     this.currentMeasures = this.measure();
     this.updateStyles();
-    this.restartStartingStyle();
 
     exiting.forEach((child) => {
       const id = child.getAttribute("torph-id")!;
+
       const prev = this.prevMeasures[id];
 
       const siblings = Array.from(element.children) as HTMLElement[];
@@ -145,19 +153,6 @@ export class TextMorph {
     }, this.options.duration);
   }
 
-  private restartStartingStyle() {
-    const children = Array.from(this.element.children) as HTMLElement[];
-
-    children.forEach((child) => {
-      const parent = child.parentElement!;
-      parent.removeChild(child);
-
-      void child.offsetHeight;
-
-      parent.appendChild(child);
-    });
-  }
-
   private measure() {
     const children = Array.from(this.element.children) as HTMLElement[];
     const measures: Measures = {};
@@ -205,15 +200,15 @@ export class TextMorph {
   }
 
   private addStyles() {
+    if (document.querySelector("style[data-torph]")) return;
+
     const style = document.createElement("style");
+    style.dataset.torph = "true";
     style.innerHTML = `
 [torph-root],
 [torph-group] {
   display: inline-flex; /* TODO: remove for multi-line support */
   position: relative;
-  transition-duration: ${this.options.duration}ms;
-  transition-timing-function: ${this.options.ease};
-  transition-property: width, height;
   will-change: width, height;
 }
 
@@ -236,12 +231,8 @@ export class TextMorph {
   }
 
   private removeStyles() {
-    const styles = document.head.getElementsByTagName("style");
-    Array.from(styles).forEach((style) => {
-      if (style.innerHTML.includes("[torph-root]")) {
-        document.head.removeChild(style);
-      }
-    });
+    const style = document.querySelector("style[data-torph]");
+    if (style) style.remove();
   }
 
   // utils
