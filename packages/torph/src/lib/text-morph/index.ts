@@ -48,17 +48,35 @@ export class TextMorph {
     const oldHeight = element.offsetHeight;
 
     const byWord = value.includes(" ");
-
     const segmenter = new Intl.Segmenter(this.options.locale, {
       granularity: byWord ? "word" : "grapheme",
     });
-
     const iterator = segmenter.segment(value)[Symbol.iterator]();
     const blocks = this.blocks(iterator);
 
     this.prevMeasures = this.measure();
+    const oldChildren = Array.from(element.children) as HTMLElement[];
+    const newIds = new Set(blocks.map((b) => b.id));
 
-    element.innerHTML = "";
+    const exiting = oldChildren.filter(
+      (child) => !newIds.has(child.getAttribute("torph-id") as string),
+    );
+
+    const parentRect = this.getUnscaledBoundingClientRect(element);
+    exiting.forEach((child) => {
+      const rect = this.getUnscaledBoundingClientRect(child);
+      child.style.position = "absolute";
+      child.style.pointerEvents = "none";
+      child.style.left = `${rect.left - parentRect.left}px`;
+      child.style.top = `${rect.top - parentRect.top}px`;
+      child.style.width = `${rect.width}px`;
+      child.style.height = `${rect.height}px`;
+    });
+
+    oldChildren.forEach((child) => {
+      const id = child.getAttribute("torph-id") as string;
+      if (newIds.has(id)) child.remove();
+    });
 
     blocks.forEach((block) => {
       const span = document.createElement("span");
@@ -70,14 +88,45 @@ export class TextMorph {
 
     this.currentMeasures = this.measure();
     this.updateStyles();
-
     this.restartStartingStyle();
+
+    exiting.forEach((child) => {
+      const id = child.getAttribute("torph-id")!;
+      const prev = this.prevMeasures[id];
+
+      const siblings = Array.from(element.children) as HTMLElement[];
+      const nearest = siblings.find((s) => {
+        const sRect = s.getBoundingClientRect();
+        const cRect = child.getBoundingClientRect();
+        return Math.abs(sRect.left - cRect.left) < 40;
+      });
+
+      const nextPos = nearest
+        ? this.currentMeasures[nearest.getAttribute("torph-id")!]
+        : prev;
+
+      const dx = (nextPos ? nextPos.x - (prev?.x || 0) : 0) * 0.5;
+      const dy = (nextPos ? nextPos.y - (prev?.y || 0) : 0) * 0.5;
+
+      const animation = child.animate(
+        {
+          transform: `translate(${dx}px, ${dy}px) scale(0.95)`,
+          opacity: 0,
+          offset: 1,
+        },
+        {
+          duration: this.options.duration,
+          easing: this.options.ease,
+          fill: "both",
+        },
+      );
+      animation.onfinish = () => child.remove();
+    });
 
     if (oldWidth === 0 || oldHeight === 0) return;
 
     element.style.width = "auto";
     element.style.height = "auto";
-
     void element.offsetWidth;
 
     const newWidth = element.offsetWidth;
@@ -85,7 +134,6 @@ export class TextMorph {
 
     element.style.width = `${oldWidth}px`;
     element.style.height = `${oldHeight}px`;
-
     void element.offsetWidth;
 
     element.style.width = `${newWidth}px`;
@@ -140,14 +188,18 @@ export class TextMorph {
       const deltaY = prev ? prev?.y - cy : 0;
       const isNew = !prev;
 
-      child.style.setProperty(
-        "--invert",
-        `translate(${deltaX}px, ${deltaY}px) scale(${isNew ? 0.95 : 1})`,
-      );
-      child.style.setProperty("--opacity", isNew ? "0" : "1");
-      child.style.setProperty(
-        "--delay",
-        isNew ? `${this.options.duration! * 0.2}ms` : `0ms`,
+      child.animate(
+        {
+          transform: `translate(${deltaX}px, ${deltaY}px) scale(${isNew ? 0.95 : 1})`,
+          opacity: isNew ? 0 : 1,
+          offset: 0,
+        },
+        {
+          duration: this.options.duration,
+          easing: this.options.ease,
+          delay: isNew ? this.options.duration! * 0.2 : 0,
+          fill: "both",
+        },
       );
     });
   }
@@ -167,18 +219,9 @@ export class TextMorph {
 
 [torph-item] {
   display: inline-block;
-  transition-duration: inherit;
-  transition-delay: var(--delay, 0ms);
-  transition-timing-function: inherit;
-  transition-property: opacity, transform;
   will-change: opacity, transform;
   transform: none;
   opacity: 1;
-
-  @starting-style {
-    transform: var(--invert);
-    opacity: var(--opacity);
-  }
 }
   
 [torph-root][torph-debug] {
@@ -236,5 +279,47 @@ export class TextMorph {
     );
 
     return uniqueStrings;
+  }
+
+  private getUnscaledBoundingClientRect(element: HTMLElement) {
+    const scaledRect = element.getBoundingClientRect();
+    const computedStyle = window.getComputedStyle(element);
+    const transform = computedStyle.transform;
+
+    let scaleX = 1;
+    let scaleY = 1;
+
+    const matrixRegex = /matrix\(([^)]+)\)/;
+    const match = transform.match(matrixRegex);
+
+    if (match) {
+      const values = match[1]?.split(",").map(Number);
+      if (values && values?.length >= 4) {
+        scaleX = values[0]!;
+        scaleY = values[3]!;
+      }
+    } else {
+      const scaleXMatch = transform.match(/scaleX\(([^)]+)\)/);
+      const scaleYMatch = transform.match(/scaleY\(([^)]+)\)/);
+      if (scaleXMatch) scaleX = parseFloat(scaleXMatch[1]!);
+      if (scaleYMatch) scaleY = parseFloat(scaleYMatch[1]!);
+    }
+
+    const unscaledWidth = scaledRect.width / scaleX;
+    const unscaledHeight = scaledRect.height / scaleY;
+
+    const unscaledX = scaledRect.x + (scaledRect.width - unscaledWidth) / 2;
+    const unscaledY = scaledRect.y + (scaledRect.height - unscaledHeight) / 2;
+
+    return {
+      x: unscaledX,
+      y: unscaledY,
+      width: unscaledWidth,
+      height: unscaledHeight,
+      top: unscaledY,
+      right: unscaledX + unscaledWidth,
+      bottom: unscaledY + unscaledHeight,
+      left: unscaledX,
+    };
   }
 }
