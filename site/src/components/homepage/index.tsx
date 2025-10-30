@@ -101,6 +101,7 @@ const locales = {
     "Animate Text Seamlessly",
     "Fluidly Animate Text",
   ],
+  /*
   es: [
     "Anima texto fácilmente",
     "Anima texto sin esfuerzo",
@@ -126,6 +127,7 @@ const locales = {
     "تحريك النص بشكل طبيعي",
   ],
   zh: ["轻松动画文字", "流畅动画文字", "自然动画文字", "无缝动画文字"],
+  */
 };
 
 const frameworks = [
@@ -150,21 +152,12 @@ const frameworks = [
     logo: <TypeScriptLogo />,
   },
 ];
-const flags = {
-  en: "🇺🇸",
-  es: "🇪🇸",
-  ja: "🇯🇵",
-  ko: "🇰🇷",
-  ar: "🇸🇦",
-  zh: "🇨🇳",
-};
 
 export default function Home() {
   const [frameworkIndex, setFrameworkIndex] = useState(0);
-  const [locale, setLocale] = useState<keyof typeof locales>("en");
   const [textIndex, setTextIndex] = useState(0);
 
-  const texts = locales[locale];
+  const texts = locales["en"];
 
   useEffect(() => {
     const interval = setTimeout(() => {
@@ -197,9 +190,7 @@ export default function Home() {
         </div>
 
         <div className={styles.demo}>
-          <TextMorph locale={locale}>
-            {texts[textIndex % texts.length]}
-          </TextMorph>
+          <TextMorph>{texts[textIndex % texts.length]}</TextMorph>
 
           <div>
             <Button onClick={() => setTextIndex((i) => i + 1)}>
@@ -217,6 +208,7 @@ export default function Home() {
               </svg>
               Shuffle Words
             </Button>
+            {/**
             <div className={styles.localeSwitcher}>
               {Object.keys(locales).map((loc) => {
                 return (
@@ -225,12 +217,12 @@ export default function Home() {
                     onClick={() => setLocale(loc as keyof typeof locales)}
                     data-active={loc === locale}
                   >
-                    {" "}
-                    {flags[loc as keyof typeof flags]}
+                    {loc}
                   </button>
                 );
               })}
             </div>
+             */}
           </div>
         </div>
 
@@ -240,7 +232,7 @@ export default function Home() {
           <CodeBlock
             code={`import { TextMorph } from '${frameworks[frameworkIndex % frameworks.length].entrypoint}'
         
-<TextMorph locale='${locale}'>${texts[textIndex % texts.length]}</TextMorph>`}
+<TextMorph>${texts[textIndex % texts.length]}</TextMorph>`}
           >
             {`import { TextMorph } from '`}
             <TextMorph>
@@ -248,13 +240,9 @@ export default function Home() {
             </TextMorph>
             {`'
 
-<TextMorph locale='`}
-            <TextMorph>{locale}</TextMorph>
-            {`'>`}
+<TextMorph>`}
 
-            <TextMorph locale={locale}>
-              {texts[textIndex % texts.length]}
-            </TextMorph>
+            <TextMorph>{texts[textIndex % texts.length]}</TextMorph>
             {`</TextMorph>`}
           </CodeBlock>
         </div>
