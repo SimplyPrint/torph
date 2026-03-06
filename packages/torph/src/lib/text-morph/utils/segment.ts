@@ -1,7 +1,5 @@
-export type Segment = {
-  id: string;
-  string: string;
-};
+export type { Segment } from "../../utils/types";
+import type { Segment } from "../../utils/types";
 
 export function segmentText(
   value: string,

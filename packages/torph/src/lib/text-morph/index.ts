@@ -1,44 +1,40 @@
 import type { TextMorphOptions } from "./types";
-import { spring as resolveSpring } from "./utils/spring";
-import { type Segment, segmentText } from "./utils/segment";
+import { BASE_DEFAULTS, type Segment } from "../utils/types";
+import { resolveEase } from "../utils/spring";
+import { segmentText } from "./utils/segment";
 import {
   type Measures,
   measure,
   computeDelta,
   findNearestAnchor,
   resolveExitingAnchors,
-} from "./utils/flip";
+} from "../utils/flip";
 import {
-  animateExit,
-  animateEnterOrPersist,
   transitionContainerSize,
-} from "./utils/animate";
-import { detachFromFlow, reconcileChildren } from "./utils/dom";
-import { addStyles, removeStyles } from "./utils/styles";
+} from "../utils/animate";
+import { animateExit, animateEnterOrPersist } from "./utils/animate";
+import { detachFromFlow, reconcileChildren } from "../utils/dom";
+import { addStyles, removeStyles } from "../utils/styles";
 import {
   ATTR_ROOT,
   ATTR_DEBUG,
   ATTR_EXITING,
   ATTR_ID,
-} from "./utils/constants";
+} from "../utils/constants";
 import {
   type ReducedMotionState,
   createReducedMotionListener,
-} from "./utils/reduced-motion";
+} from "../utils/reduced-motion";
 
 export type { TextMorphOptions } from "./types";
-export type { SpringParams } from "./utils/spring";
+export type { SpringParams } from "../utils/spring";
 export { MorphController } from "./controller";
 
 export const DEFAULT_AS = "span";
 export const DEFAULT_TEXT_MORPH_OPTIONS = {
+  ...BASE_DEFAULTS,
   debug: false,
-  locale: "en",
-  duration: 400,
   scale: true,
-  ease: "cubic-bezier(0.19, 1, 0.22, 1)",
-  disabled: false,
-  respectReducedMotion: true,
 } as const satisfies Omit<TextMorphOptions, "element">;
 
 export class TextMorph {
@@ -55,17 +51,7 @@ export class TextMorph {
 
   constructor(options: TextMorphOptions) {
     const { ease: rawEase, ...rest } = { ...DEFAULT_TEXT_MORPH_OPTIONS, ...options };
-    let ease: string;
-    let duration: number;
-
-    if (typeof rawEase === "object") {
-      const resolved = resolveSpring(rawEase);
-      ease = resolved.easing;
-      duration = resolved.duration;
-    } else {
-      ease = rawEase;
-      duration = rest.duration!;
-    }
+    const { ease, duration } = resolveEase(rawEase, rest.duration!);
 
     this.options = { ...rest, ease, duration };
 

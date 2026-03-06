@@ -57,6 +57,17 @@ function computeDuration(
   return Math.ceil(maxDuration * 1000);
 }
 
+export function resolveEase(
+  ease: string | SpringParams,
+  fallbackDuration: number,
+): { ease: string; duration: number } {
+  if (typeof ease === "object") {
+    const resolved = spring(ease);
+    return { ease: resolved.easing, duration: resolved.duration };
+  }
+  return { ease, duration: fallbackDuration };
+}
+
 const cache = new Map<string, SpringResult>();
 
 export function spring(params?: SpringParams): SpringResult {

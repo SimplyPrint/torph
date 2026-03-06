@@ -1,14 +1,7 @@
-import type { SpringParams } from "./utils/spring";
+import type { BaseMorphOptions } from "../utils/types";
 
-export interface TextMorphOptions {
+export interface TextMorphOptions extends BaseMorphOptions {
   debug?: boolean;
-  element: HTMLElement;
   locale?: Intl.LocalesArgument;
   scale?: boolean;
-  duration?: number; // in ms
-  ease?: string | SpringParams;
-  disabled?: boolean;
-  respectReducedMotion?: boolean;
-  onAnimationStart?: () => void;
-  onAnimationComplete?: () => void;
 }

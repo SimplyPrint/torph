@@ -1,4 +1,4 @@
-import type { Segment } from "./segment";
+import type { Segment } from "./types";
 import { ATTR_EXITING, ATTR_ID, ATTR_ITEM } from "./constants";
 import { parseTranslate } from "./animate";
 
