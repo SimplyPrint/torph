@@ -3,9 +3,11 @@
 import styles from "./styles.module.scss";
 import React from "react";
 import { TextMorph } from "torph/react";
-import { segmentText, diffSegments } from "torph";
+import { segmentText, diffSegments, DEFAULT_TEXT_MORPH_OPTIONS } from "torph";
 import type { Segment } from "torph";
 import { Button } from "@/components/button";
+import bundleSizes from "./bundle-sizes.json";
+import pkg from "../../../../packages/torph/package.json";
 
 type VerifyFn = () => { pass: boolean; detail: string };
 
@@ -117,10 +119,8 @@ function verifyGraphemeMorph(
   to: string,
   sharedChars: string[],
 ): { pass: boolean; detail: string } {
-  // Single-word texts use grapheme segmentation, so both old and new are char segments
   const oldSegs = segmentText(from, "en");
   const newSegs = segmentText(to, "en");
-  // Check that shared characters exist in both
   const oldChars = oldSegs.map((s: Segment) => s.string);
   const newChars = newSegs.map((s: Segment) => s.string);
   const allShared = sharedChars.every(
@@ -137,6 +137,19 @@ function verifyGraphemeMorph(
 function combineResults(...results: { pass: boolean; detail: string }[]) {
   const pass = results.every((r) => r.pass);
   return { pass, detail: results.map((r) => r.detail).join("; ") };
+}
+
+function measurePerf(
+  fn: () => { pass: boolean; detail: string },
+  iterations = 100,
+) {
+  const start = performance.now();
+  let result: { pass: boolean; detail: string } = { pass: true, detail: "" };
+  for (let i = 0; i < iterations; i++) {
+    result = fn();
+  }
+  const elapsed = performance.now() - start;
+  return { ...result, timeMs: elapsed / iterations };
 }
 
 const TESTS: TestCase[] = [
@@ -211,7 +224,6 @@ const TESTS: TestCase[] = [
     tags: ["enter"],
     values: ["hello", "hello world"],
     verify: () => {
-      // "hello" goes from grapheme segments to a word match — old char IDs should persist
       const old = segmentText("hello", "en");
       const { segments } = diffSegments(old, "hello world", "en");
       const oldCharIds = old.map((s: Segment) => s.id);
@@ -318,9 +330,7 @@ const TESTS: TestCase[] = [
     tags: ["edge case"],
     values: ["", "hello world", ""],
     verify: () => {
-      // Empty old produces valid segments via the diff path
       const { segments } = diffSegments([], "hello world", "en");
-      // And "hello world" → "" produces empty segments
       const old = segmentText("hello world", "en");
       const r2 = diffSegments(old, "", "en");
       const pass =
@@ -341,8 +351,7 @@ const TESTS: TestCase[] = [
       "Emoji grapheme clusters should be treated as single segments and persist correctly.",
     tags: ["grapheme", "edge case"],
     values: ["Hello 👋", "Goodbye 👋"],
-    verify: () =>
-      verifyWordPersistence("Hello 👋", "Goodbye 👋", "👋"),
+    verify: () => verifyWordPersistence("Hello 👋", "Goodbye 👋", "👋"),
   },
   {
     label: "Long sentence overlap",
@@ -398,27 +407,197 @@ const TESTS: TestCase[] = [
         "Transaction",
       ),
   },
+  {
+    label: "RTL text (Arabic)",
+    description:
+      "Arabic text should segment and diff correctly. Shared words should persist across transitions.",
+    tags: ["i18n", "edge case"],
+    values: ["مرحبا بالعالم", "مرحبا يا صديقي"],
+    verify: () =>
+      verifyWordPersistence("مرحبا بالعالم", "مرحبا يا صديقي", "مرحبا"),
+  },
+  {
+    label: "RTL text (Hebrew)",
+    description: "Hebrew text segmentation and persistence of shared words.",
+    tags: ["i18n", "edge case"],
+    values: ["שלום עולם", "שלום חברים"],
+    verify: () => verifyWordPersistence("שלום עולם", "שלום חברים", "שלום"),
+  },
+  {
+    label: "Long paragraph",
+    description:
+      "Stress test with paragraph-length text. Common words should persist, unique words should enter/exit.",
+    tags: ["stress", "flip"],
+    values: [
+      "The quick brown fox jumps over the lazy dog while the sun sets behind the distant mountains",
+      "The slow gray wolf runs under the bright moon while the rain falls across the nearby valleys",
+    ],
+    verify: () =>
+      combineResults(
+        verifyWordPersistence(
+          "The quick brown fox jumps over the lazy dog while the sun sets behind the distant mountains",
+          "The slow gray wolf runs under the bright moon while the rain falls across the nearby valleys",
+          "while",
+        ),
+        verifyWordPersistence(
+          "The quick brown fox jumps over the lazy dog while the sun sets behind the distant mountains",
+          "The slow gray wolf runs under the bright moon while the rain falls across the nearby valleys",
+          "the",
+        ),
+      ),
+  },
+  {
+    label: "Whitespace normalization",
+    description:
+      "Extra spaces should not cause unexpected segment splits or ID changes.",
+    tags: ["edge case"],
+    values: ["hello world", "hello  world", "hello world"],
+    verify: () => verifyWordPersistence("hello world", "hello world", "hello"),
+  },
+  {
+    label: "Unicode accents",
+    description:
+      "Accented characters (café → cafe) should handle gracefully. Shared base chars should persist.",
+    tags: ["grapheme", "edge case"],
+    values: ["café", "cafe"],
+    verify: () => verifyGraphemeMorph("café", "cafe", ["c", "a", "f"]),
+  },
+  {
+    label: "Compound emoji",
+    description:
+      "Complex emoji (family, flag sequences) should be treated as single grapheme segments.",
+    tags: ["grapheme", "edge case"],
+    values: ["Hello 👨‍👩‍👧‍👦", "Goodbye 👨‍👩‍👧‍👦"],
+    verify: () => verifyWordPersistence("Hello 👨‍👩‍👧‍👦", "Goodbye 👨‍👩‍👧‍👦", "👨‍👩‍👧‍👦"),
+  },
 ];
 
-const RESULTS = TESTS.map((test) => ({
-  label: test.label,
-  result: test.verify?.() ?? null,
-}));
+const ALL_TAGS = [...new Set(TESTS.flatMap((t) => t.tags))].sort();
+
+type TestResult = {
+  label: string;
+  result: { pass: boolean; detail: string } | null;
+  timeMs: number | null;
+};
+
+function computeResults(): TestResult[] {
+  return TESTS.map((test) => {
+    if (!test.verify) return { label: test.label, result: null, timeMs: null };
+    const { timeMs, ...result } = measurePerf(test.verify);
+    return { label: test.label, result, timeMs };
+  });
+}
+
+function useResults(): TestResult[] {
+  const empty = TESTS.map((t) => ({
+    label: t.label,
+    result: null,
+    timeMs: null,
+  }));
+  const [results, setResults] = React.useState<TestResult[]>(empty);
+  React.useEffect(() => {
+    setResults(computeResults());
+  }, []);
+  return results;
+}
+
+const EASINGS = {
+  default: DEFAULT_TEXT_MORPH_OPTIONS.ease,
+  spring: { stiffness: 200, damping: 20, mass: 1 },
+  linear: "linear",
+} as const;
+type EasingKey = keyof typeof EASINGS;
+
+function SegmentInspector({ from, to }: { from: string; to: string }) {
+  const oldSegs = segmentText(from, "en");
+  const { segments: newSegs, splits } = diffSegments(oldSegs, to, "en");
+
+  return (
+    <div className={styles.inspector}>
+      <div className={styles.inspectorSection}>
+        <span className={styles.inspectorLabel}>Old segments</span>
+        <div className={styles.segmentList}>
+          {oldSegs.map((s, i) => (
+            <span key={i} className={styles.segmentChip} title={`ID: ${s.id}`}>
+              {s.string === "\u00A0" ? "·" : s.string}
+              <span className={styles.segmentId}>{s.id.slice(0, 6)}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className={styles.inspectorSection}>
+        <span className={styles.inspectorLabel}>New segments</span>
+        <div className={styles.segmentList}>
+          {newSegs.map((s, i) => {
+            const persisted = oldSegs.some((o) => o.id === s.id);
+            return (
+              <span
+                key={i}
+                className={`${styles.segmentChip} ${persisted ? styles.segmentPersisted : styles.segmentNew}`}
+                title={`ID: ${s.id}${persisted ? " (persisted)" : " (new)"}`}
+              >
+                {s.string === "\u00A0" ? "·" : s.string}
+                <span className={styles.segmentId}>{s.id.slice(0, 6)}</span>
+              </span>
+            );
+          })}
+        </div>
+      </div>
+      {splits.size > 0 && (
+        <div className={styles.inspectorSection}>
+          <span className={styles.inspectorLabel}>Splits</span>
+          <div className={styles.segmentList}>
+            {[...splits.entries()].map(([word, chars]) => (
+              <span
+                key={word}
+                className={styles.segmentChip}
+                title={`"${word}" split into ${chars.length} chars`}
+              >
+                {word} → {chars.map((c) => c.string).join("")}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function TestCard({
   test,
   result,
+  timeMs,
+  morphAllSignal,
+  cardRef,
 }: {
   test: TestCase;
   result: { pass: boolean; detail: string } | null;
+  timeMs: number | null;
+  morphAllSignal: number;
+  cardRef?: React.Ref<HTMLDivElement>;
 }) {
+  const SPEEDS = {
+    default: DEFAULT_TEXT_MORPH_OPTIONS.duration,
+    slow: 3000,
+    fast: 150,
+  } as const;
+  type Speed = keyof typeof SPEEDS;
+
   const [index, setIndex] = React.useState(0);
   const [auto, setAuto] = React.useState(false);
+  const [showInspector, setShowInspector] = React.useState(false);
+  const [speed, setSpeed] = React.useState<Speed>("default");
+  const [easing, setEasing] = React.useState<EasingKey>("default");
+  const progressRef = React.useRef<HTMLDivElement | null>(null);
   const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
   const advance = React.useCallback(() => {
     setIndex((i) => (i + 1) % test.values.length);
   }, [test.values.length]);
+
+  React.useEffect(() => {
+    if (morphAllSignal > 0) advance();
+  }, [morphAllSignal, advance]);
 
   React.useEffect(() => {
     if (auto) {
@@ -430,20 +609,27 @@ function TestCard({
   }, [auto, advance]);
 
   const isSpamTest = test.tags.includes("spam");
+  const prevIndex = (index - 1 + test.values.length) % test.values.length;
 
   return (
-    <div className={styles.card}>
+    <div className={styles.card} ref={cardRef} tabIndex={0}>
       <div className={styles.cardHeader}>
         <div className={styles.headerLeft}>
           <span className={styles.label}>{test.label}</span>
           {result && (
             <span
-              className={
-                result.pass ? styles.badgePass : styles.badgeFail
-              }
+              className={result.pass ? styles.badgePass : styles.badgeFail}
               title={result.detail}
             >
               {result.pass ? "PASS" : "FAIL"}
+            </span>
+          )}
+          {timeMs !== null && (
+            <span
+              className={styles.perfBadge}
+              title={`Avg over 100 iterations`}
+            >
+              {timeMs < 0.01 ? "<0.01" : timeMs.toFixed(2)}ms
             </span>
           )}
         </div>
@@ -456,57 +642,376 @@ function TestCard({
         </div>
       </div>
       <p className={styles.description}>{test.description}</p>
-      <div className={styles.cardBody} style={{ textAlign: test.align }}>
-        <TextMorph>{test.values[index]}</TextMorph>
+      <p className={styles.verifyDetail}>{result ? result.detail : "\u00A0"}</p>
+      <div
+        className={styles.cardBody}
+        style={{ textAlign: test.align, cursor: "pointer" }}
+        onClick={advance}
+      >
+        <TextMorph
+          duration={SPEEDS[speed]}
+          ease={EASINGS[easing]}
+          onAnimationStart={() => {
+            if (progressRef.current) {
+              const el = progressRef.current;
+              el.style.transition = "none";
+              el.style.width = "0%";
+              el.offsetHeight; // force reflow
+              el.style.transition = `width ${SPEEDS[speed]}ms linear`;
+              el.style.width = "100%";
+            }
+          }}
+          onAnimationComplete={() => {
+            if (progressRef.current) {
+              progressRef.current.style.transition = "none";
+              progressRef.current.style.width = "0%";
+            }
+          }}
+        >
+          {test.values[index]}
+        </TextMorph>
       </div>
       <div className={styles.cardFooter}>
-        <Button type="button" onClick={advance}>
-          Morph
-        </Button>
         {isSpamTest && (
           <Button type="button" onClick={() => setAuto((a) => !a)}>
             {auto ? "Stop" : "Auto"}
           </Button>
         )}
-        <span className={styles.step}>
-          {index + 1} / {test.values.length}
-        </span>
+        <button
+          type="button"
+          className={`${styles.iconBtn} ${showInspector ? styles.iconBtnActive : ""}`}
+          onClick={() => setShowInspector((s) => !s)}
+          title={showInspector ? "Hide inspector" : "Show inspector"}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {showInspector ? (
+              <>
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                <line x1="1" y1="1" x2="23" y2="23" />
+              </>
+            ) : (
+              <>
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </>
+            )}
+          </svg>
+        </button>
+        <div className={styles.speedToggle}>
+          {(Object.keys(SPEEDS) as Speed[]).map((s) => (
+            <button
+              key={s}
+              type="button"
+              className={`${styles.speedBtn} ${speed === s ? styles.speedBtnActive : ""}`}
+              onClick={() => setSpeed(s)}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        <div className={styles.speedToggle}>
+          {(Object.keys(EASINGS) as EasingKey[]).map((e) => (
+            <button
+              key={e}
+              type="button"
+              className={`${styles.speedBtn} ${easing === e ? styles.speedBtnActive : ""}`}
+              onClick={() => setEasing(e)}
+            >
+              {e}
+            </button>
+          ))}
+        </div>
+        <div className={styles.stepGroup}>
+          <span className={styles.step}>
+            {index + 1} / {test.values.length}
+          </span>
+          <div className={styles.progressTrack}>
+            <div className={styles.progressBar} ref={progressRef} />
+          </div>
+        </div>
+      </div>
+      {showInspector && (
+        <SegmentInspector
+          from={test.values[prevIndex]!}
+          to={test.values[index]!}
+        />
+      )}
+    </div>
+  );
+}
+
+function SandboxCard() {
+  const [from, setFrom] = React.useState("hello world");
+  const [to, setTo] = React.useState("world hello");
+  const [current, setCurrent] = React.useState("hello world");
+  const progressRef = React.useRef<HTMLDivElement | null>(null);
+  const duration = DEFAULT_TEXT_MORPH_OPTIONS.duration;
+
+  const toggle = React.useCallback(() => {
+    setCurrent((c) => (c === from ? to : from));
+  }, [from, to]);
+
+  return (
+    <div className={styles.card}>
+      <div className={styles.cardHeader}>
+        <div className={styles.headerLeft}>
+          <span className={styles.label}>Sandbox</span>
+        </div>
+        <div className={styles.tags}>
+          <span className={styles.tag}>custom</span>
+        </div>
+      </div>
+      <p className={styles.description}>
+        Type any text to test morphing behavior with custom inputs.
+      </p>
+      <div className={styles.sandboxInputs}>
+        <div className={styles.sandboxField}>
+          <label className={styles.inspectorLabel}>From</label>
+          <input
+            type="text"
+            className={styles.sandboxInput}
+            value={from}
+            onChange={(e) => {
+              setFrom(e.target.value);
+              setCurrent(e.target.value);
+            }}
+          />
+        </div>
+        <div className={styles.sandboxField}>
+          <label className={styles.inspectorLabel}>To</label>
+          <input
+            type="text"
+            className={styles.sandboxInput}
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+          />
+        </div>
+      </div>
+      <div
+        className={styles.cardBody}
+        style={{ cursor: "pointer" }}
+        onClick={toggle}
+      >
+        <TextMorph
+          onAnimationStart={() => {
+            if (progressRef.current) {
+              const el = progressRef.current;
+              el.style.transition = "none";
+              el.style.width = "0%";
+              el.offsetHeight;
+              el.style.transition = `width ${duration}ms linear`;
+              el.style.width = "100%";
+            }
+          }}
+          onAnimationComplete={() => {
+            if (progressRef.current) {
+              progressRef.current.style.transition = "none";
+              progressRef.current.style.width = "0%";
+            }
+          }}
+        >
+          {current}
+        </TextMorph>
+      </div>
+      <div className={styles.cardFooter}>
+        <div className={styles.stepGroup}>
+          <div className={styles.progressTrack}>
+            <div className={styles.progressBar} ref={progressRef} />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
+function copyResultsToClipboard(results: TestResult[]) {
+  const lines = [
+    "# Torph Test Results",
+    "",
+    `| Test | Status | Time |`,
+    `|------|--------|------|`,
+    ...results.map((r) => {
+      const status = !r.result ? "Skip" : r.result.pass ? "Pass" : "Fail";
+      const time = r.timeMs !== null ? `${r.timeMs.toFixed(2)}ms` : "-";
+      return `| ${r.label} | ${status} | ${time} |`;
+    }),
+    "",
+    `Generated: ${new Date().toISOString()}`,
+  ];
+  navigator.clipboard.writeText(lines.join("\n"));
+}
+
 export const PlaygroundTests = () => {
-  const passed = RESULTS.filter((r) => r.result?.pass).length;
-  const failed = RESULTS.filter((r) => r.result && !r.result.pass).length;
-  const total = RESULTS.filter((r) => r.result).length;
+  const [activeTag, setActiveTag] = React.useState<string | null>(null);
+  const [failOnly, setFailOnly] = React.useState(false);
+  const [morphAllSignal, setMorphAllSignal] = React.useState(0);
+  const [copied, setCopied] = React.useState(false);
+  const results = useResults();
+  const cardRefs = React.useRef<(HTMLDivElement | null)[]>([]);
+
+  const filteredIndices = TESTS.map((_, i) => i).filter((i) => {
+    if (activeTag && !TESTS[i]!.tags.includes(activeTag)) return false;
+    if (failOnly && results[i]?.result?.pass !== false) return false;
+    return true;
+  });
+
+  const isDev = process.env.NODE_ENV !== "production";
+  const passed = results.filter((r) => r.result?.pass).length;
+  const failed = results.filter((r) => r.result && !r.result.pass).length;
+  const total = results.filter((r) => r.result).length;
+
+  React.useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
+
+      if (e.code === "Space" && e.shiftKey) {
+        e.preventDefault();
+        setMorphAllSignal((s) => s + 1);
+        return;
+      }
+
+      if (e.code === "Space" && !e.shiftKey) {
+        const focused = document.activeElement;
+        if (
+          focused instanceof HTMLElement &&
+          focused.closest(`.${styles.card}`)
+        ) {
+          e.preventDefault();
+          const cardBody = focused.querySelector(
+            `.${styles.cardBody}`,
+          ) as HTMLElement | null;
+          if (cardBody) cardBody.click();
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const handleCopy = () => {
+    copyResultsToClipboard(results);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className={styles.grid}>
       <div className={styles.summary}>
-        <span className={styles.summaryLabel}>
-          {passed}/{total} passed
-          {failed > 0 && <span className={styles.summaryFail}> · {failed} failed</span>}
-        </span>
-        <div className={styles.summaryDots}>
-          {RESULTS.map((r) => (
-            <span
-              key={r.label}
-              className={
-                !r.result
-                  ? styles.dotSkip
-                  : r.result.pass
-                    ? styles.dotPass
-                    : styles.dotFail
-              }
-              title={`${r.label}${r.result ? `: ${r.result.detail}` : ""}`}
-            />
-          ))}
+        <div className={styles.summaryRow}>
+          <div className={styles.summaryLeft}>
+            <span className={styles.summaryLabel}>
+              {passed}/{total} passed
+              {failed > 0 && (
+                <span className={styles.summaryFail}> · {failed} failed</span>
+              )}
+            </span>
+            <span className={styles.version}>
+              v{pkg.version}
+              {isDev && <span className={styles.versionDev}>dev</span>}
+            </span>
+          </div>
+          <div className={styles.summaryDots}>
+            {results.map((r) => (
+              <span
+                key={r.label}
+                className={
+                  !r.result
+                    ? styles.dotSkip
+                    : r.result.pass
+                      ? styles.dotPass
+                      : styles.dotFail
+                }
+                title={`${r.label}${r.result ? `: ${r.result.detail}` : ""}`}
+              />
+            ))}
+          </div>
+        </div>
+        <div className={styles.summaryRow}>
+          <div className={styles.bundleSizes}>
+            {bundleSizes.map((entry) => {
+              const diff = entry.publishedGzip
+                ? entry.gzip - entry.publishedGzip
+                : 0;
+              const diffStr = diff > 0 ? `+${diff}` : `${diff}`;
+              return (
+                <span
+                  key={entry.name}
+                  className={styles.bundleEntry}
+                  title={`${entry.name}: ${(entry.raw / 1024).toFixed(1)}kB raw · published: ${(entry.publishedGzip / 1024).toFixed(1)}kB gz`}
+                >
+                  {entry.name}{" "}
+                  <strong>{(entry.gzip / 1024).toFixed(1)}kB</strong>
+                  {diff !== 0 && (
+                    <span
+                      className={
+                        diff > 0 ? styles.bundleDiffUp : styles.bundleDiffDown
+                      }
+                    >
+                      {diffStr}B
+                    </span>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+          <div className={styles.summaryActions}>
+            <button
+              type="button"
+              className={styles.morphAllBtn}
+              onClick={handleCopy}
+            >
+              {copied ? "Copied!" : "Copy Results"}
+            </button>
+            <button
+              type="button"
+              className={styles.morphAllBtn}
+              onClick={() => setMorphAllSignal((s) => s + 1)}
+            >
+              Morph All
+            </button>
+          </div>
         </div>
       </div>
-      {TESTS.map((test, i) => (
-        <TestCard key={test.label} test={test} result={RESULTS[i]!.result} />
+      <div className={styles.filterTags}>
+        <button
+          type="button"
+          className={`${styles.filterTag} ${failOnly ? styles.filterTagActive : ""}`}
+          onClick={() => setFailOnly((f) => !f)}
+        >
+          failing only
+        </button>
+        {ALL_TAGS.map((tag) => (
+          <button
+            type="button"
+            key={tag}
+            className={`${styles.filterTag} ${activeTag === tag ? styles.filterTagActive : ""}`}
+            onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+          >
+            {tag}
+          </button>
+        ))}
+      </div>
+      <SandboxCard />
+      {filteredIndices.map((i) => (
+        <TestCard
+          key={TESTS[i]!.label}
+          test={TESTS[i]!}
+          result={results[i]!.result}
+          timeMs={results[i]!.timeMs}
+          morphAllSignal={morphAllSignal}
+          cardRef={(el) => {
+            cardRefs.current[i] = el;
+          }}
+        />
       ))}
+      <p className={styles.keyboardHint}>
+        <kbd>Space</kbd> morph focused card · <kbd>Shift+Space</kbd> morph all
+      </p>
     </div>
   );
 };

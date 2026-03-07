@@ -8,7 +8,7 @@
     "dev": "pnpm run watch & pnpm run site:dev",
     "build": "pnpm --filter=torph build",
     "site:dev": "pnpm --filter=site dev",
-    "site:build": "pnpm run build && pnpm --filter=site build",
+    "site:build": "pnpm run build && node scripts/bundle-sizes.mjs && pnpm --filter=site build",
     "example:react": "pnpm --filter=react-example dev",
     "example:svelte": "pnpm --filter=svelte-example dev",
     "example:svelte-ssr": "pnpm --filter=svelte-ssr-example dev",

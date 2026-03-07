@@ -218,7 +218,10 @@ export function diffSegments(
 
       const newCharToOldSeg = new Map<number, Segment>();
       for (let k = 0; k < newCharLcs.length; k++) {
-        newCharToOldSeg.set(newCharLcs[k]!, oldCharSegs[oldCharLcs[k]!]!);
+        const oldSeg = oldCharSegs[oldCharLcs[k]!];
+        if (oldSeg) {
+          newCharToOldSeg.set(newCharLcs[k]!, oldSeg);
+        }
       }
 
       for (let ci = 0; ci < newChars.length; ci++) {

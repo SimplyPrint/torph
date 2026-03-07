@@ -46,15 +46,13 @@ export class TextMorph {
   private element: HTMLElement;
   private options: Omit<TextMorphOptions, "element" | "ease"> & { ease?: string } = {};
 
-  private data: HTMLElement | string | null;
+  private data: HTMLElement | string;
 
   private currentMeasures: Measures = {};
   private prevMeasures: Measures = {};
   private previousSegments: Segment[] = [];
   private isInitialRender = true;
   private reducedMotion: ReducedMotionState | null = null;
-  private _collapseTimer: ReturnType<typeof setTimeout> | null = null;
-
 
   constructor(options: TextMorphOptions) {
     const { ease: rawEase, ...rest } = { ...DEFAULT_TEXT_MORPH_OPTIONS, ...options };
@@ -86,14 +84,13 @@ export class TextMorph {
       if (options.debug) this.element.setAttribute(ATTR_DEBUG, "");
     }
 
-    this.data = null;
+    this.data = "";
     if (!this.isDisabled()) {
       addStyles();
     }
   }
 
   destroy() {
-    if (this._collapseTimer) clearTimeout(this._collapseTimer);
     this.reducedMotion?.destroy();
     this.element.getAnimations().forEach((anim) => anim.cancel());
     this.element.removeAttribute(ATTR_ROOT);
@@ -145,6 +142,13 @@ export class TextMorph {
       splits = new Map();
     }
 
+    // Keep a zero-width space segment so the container always has in-flow
+    // content, preserving the line box height during exit animations.
+    const isEmptyTransition = segments.length === 0;
+    if (isEmptyTransition) {
+      segments = [{ id: "empty", string: "\u200B" }];
+    }
+
     splitWordSpans(element, splits);
 
     this.prevMeasures = measure(this.element);
@@ -175,7 +179,7 @@ export class TextMorph {
     this.updateStyles(segments);
 
     exiting.forEach((child) => {
-      if (this.isInitialRender) {
+      if (this.isInitialRender || child.getAttribute(ATTR_ID) === "empty") {
         child.remove();
         return;
       }
@@ -203,22 +207,19 @@ export class TextMorph {
       return;
     }
 
-    if (segments.length === 0) {
-      // Keep container at old size while exits play, then collapse
+    if (isEmptyTransition) {
+      // Lock container at old size while exits play so the container
+      // doesn't reposition (e.g. under text-align: center).
+      element.style.transitionProperty = "none";
       element.style.width = `${oldWidth}px`;
       element.style.height = `${oldHeight}px`;
-      const collapseTimer = setTimeout(() => {
+      setTimeout(() => {
         element.style.width = "auto";
         element.style.height = "auto";
+        element.style.transitionProperty = "";
         this.options.onAnimationComplete?.();
       }, this.options.duration!);
-      // Store for cleanup if another update comes before exits finish
-      this._collapseTimer = collapseTimer;
     } else {
-      if (this._collapseTimer) {
-        clearTimeout(this._collapseTimer);
-        this._collapseTimer = null;
-      }
       transitionContainerSize(
         element,
         oldWidth,
@@ -242,6 +243,7 @@ export class TextMorph {
     children.forEach((child, index) => {
       if (child.hasAttribute(ATTR_EXITING)) return;
       const key = child.getAttribute(ATTR_ID) || `child-${index}`;
+      if (key === "empty") return;
       const isNew = !this.prevMeasures[key];
 
       const deltaKey = isNew

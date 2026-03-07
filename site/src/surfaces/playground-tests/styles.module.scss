@@ -9,13 +9,25 @@
   top: 1rem;
   z-index: 10;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.5rem;
   padding: 0.75rem 1.25rem;
   border-radius: 0.75rem;
   background: var(--body-light);
   backdrop-filter: blur(12px);
+}
+
+.summaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.summaryLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .summaryLabel {
@@ -27,6 +39,82 @@
 
 .summaryFail {
   color: rgb(248, 113, 113);
+}
+
+.version {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.25);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.versionDev {
+  font-size: 0.55rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.2rem;
+  background: rgba(250, 204, 21, 0.15);
+  color: rgb(250, 204, 21);
+}
+
+.morphAllBtn {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.3rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+.bundleSizes {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.bundleEntry {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+
+  strong {
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+  }
+}
+
+.bundleDiffUp {
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: rgb(248, 113, 113);
+}
+
+.bundleDiffDown {
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: rgb(74, 222, 128);
 }
 
 .summaryDots {
@@ -55,6 +143,35 @@
 
 .dotSkip {
   background: rgba(255, 255, 255, 0.15);
+}
+
+.filterTags {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.filterTag {
+  font-size: 0.55rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.45);
+  }
+}
+
+.filterTagActive {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .card {
@@ -108,12 +225,32 @@
   color: rgb(248, 113, 113);
 }
 
+.perfBadge {
+  font-size: 0.6rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.35);
+  cursor: default;
+}
+
 .description {
   padding: 0.75rem 1.25rem 0;
   margin: 0;
   font-size: 0.8rem;
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.35);
+}
+
+.verifyDetail {
+  padding: 0.25rem 1.25rem 0;
+  margin: 0;
+  font-size: 0.7rem;
+  font-family: monospace;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.25);
 }
 
 .tags {
@@ -150,8 +287,201 @@
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+.speedToggle {
+  display: flex;
+  border-radius: 0.3rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.speedBtn {
+  font-size: 0.55rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.2rem 0.4rem;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  & + & {
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+.speedBtnActive {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
+}
+
 .step {
   font-size: 0.7rem;
   color: rgba(255, 255, 255, 0.3);
+}
+
+.inspector {
+  padding: 0.75rem 1.25rem 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.inspectorSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.inspectorLabel {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.segmentList {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.segmentChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  font-family: monospace;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: default;
+}
+
+.segmentPersisted {
+  background: rgba(74, 222, 128, 0.1);
+  color: rgb(74, 222, 128);
+}
+
+.segmentNew {
+  background: rgba(96, 165, 250, 0.1);
+  color: rgb(96, 165, 250);
+}
+
+.segmentId {
+  font-size: 0.55rem;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.stepGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   margin-left: auto;
+}
+
+.progressTrack {
+  width: 20px;
+  height: 3px;
+  border-radius: 1.5px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.progressBar {
+  width: 0%;
+  height: 100%;
+  border-radius: 1.5px;
+  background: rgb(96, 165, 250);
+}
+
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.45);
+  }
+
+  svg {
+    display: block;
+  }
+}
+
+.iconBtnActive {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.summaryActions {
+  display: flex;
+  gap: 0.375rem;
+}
+
+.sandboxInputs {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+}
+
+.sandboxField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.sandboxInput {
+  font-size: 0.8rem;
+  font-family: monospace;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.8);
+  outline: none;
+  transition: border-color 0.15s ease;
+
+  &:focus {
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.keyboardHint {
+  text-align: center;
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.2);
+  padding: 0.5rem 0;
+
+  kbd {
+    font-family: monospace;
+    font-size: 0.6rem;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.2rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.35);
+  }
 }
