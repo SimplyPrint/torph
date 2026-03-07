@@ -1,0 +1,157 @@
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.summary {
+  position: sticky;
+  top: 1rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.75rem;
+  background: var(--body-light);
+  backdrop-filter: blur(12px);
+}
+
+.summaryLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
+.summaryFail {
+  color: rgb(248, 113, 113);
+}
+
+.summaryDots {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.dotPass,
+.dotFail,
+.dotSkip {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  cursor: default;
+}
+
+.dotPass {
+  background: rgb(74, 222, 128);
+}
+
+.dotFail {
+  background: rgb(248, 113, 113);
+}
+
+.dotSkip {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.card {
+  position: relative;
+  border-radius: 1rem;
+  background: var(--body-light);
+  overflow: hidden;
+}
+
+.cardHeader {
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.badgePass,
+.badgeFail {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  cursor: default;
+}
+
+.badgePass {
+  background: rgba(74, 222, 128, 0.15);
+  color: rgb(74, 222, 128);
+}
+
+.badgeFail {
+  background: rgba(248, 113, 113, 0.15);
+  color: rgb(248, 113, 113);
+}
+
+.description {
+  padding: 0.75rem 1.25rem 0;
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.tags {
+  display: flex;
+  gap: 0.375rem;
+  flex-shrink: 0;
+}
+
+.tag {
+  font-size: 0.625rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.375rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.cardBody {
+  padding: 3rem 1.25rem;
+  text-align: center;
+  font-family: var(--font-secondary);
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.cardFooter {
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.step {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.3);
+  margin-left: auto;
+}

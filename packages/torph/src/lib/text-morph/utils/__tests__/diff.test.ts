@@ -249,22 +249,44 @@ describe("diffSegments", () => {
     });
   });
 
-  describe("fallback to segmentText", () => {
-    it("uses segmentText when old has no spaces", () => {
+  describe("granularity transitions", () => {
+    it("persists chars when going from single word to multi word", () => {
       const old = segmentText("hello", "en");
       const { segments, splits } = diffSegments(old, "hello world", "en");
 
       expect(splits.size).toBe(0);
-      // Should produce standard word segments
-      expect(segments.find((s) => s.string === "hello")).toBeDefined();
+      // Old char segments should persist (grapheme IDs reused)
+      const oldCharIds = old.map((s) => s.id);
+      const newCharIds = segments
+        .filter((s) => s.string !== "\u00A0")
+        .filter((s) => s.string.length === 1)
+        .map((s) => s.id);
+      // All old char IDs should appear in new segments
+      for (const id of oldCharIds) {
+        expect(newCharIds).toContain(id);
+      }
+      // "world" should enter as a new word
       expect(segments.find((s) => s.string === "world")).toBeDefined();
     });
 
-    it("uses segmentText when new has no spaces", () => {
+    it("persists word when going from multi word to single word", () => {
       const old = segmentText("hello world", "en");
-      const { segments, splits } = diffSegments(old, "hello", "en");
+      const { segments } = diffSegments(old, "hello", "en");
+
+      // "hello" should persist with same ID
+      const oldHello = old.find((s) => s.string === "hello")!;
+      const newHello = segments.find((s) => s.string === "hello");
+      expect(newHello?.id).toBe(oldHello.id);
+      // "world" should not be present
+      expect(segments.find((s) => s.string === "world")).toBeUndefined();
+    });
+
+    it("uses segmentText when both old and new are single words", () => {
+      const old = segmentText("hello", "en");
+      const { segments, splits } = diffSegments(old, "world", "en");
 
       expect(splits.size).toBe(0);
+      expect(segments.length).toBeGreaterThan(0);
     });
 
     it("uses segmentText when old segments are empty", () => {
@@ -272,6 +294,23 @@ describe("diffSegments", () => {
 
       expect(splits.size).toBe(0);
       expect(segments.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("word reordering beyond LCS", () => {
+    it("persists both words when swapped — hello world → world hello", () => {
+      const old = segmentText("hello world", "en");
+      const { segments, splits } = diffSegments(old, "world hello", "en");
+
+      expect(splits.size).toBe(0);
+
+      const oldHello = old.find((s) => s.string === "hello")!;
+      const oldWorld = old.find((s) => s.string === "world")!;
+      const newHello = segments.find((s) => s.string === "hello");
+      const newWorld = segments.find((s) => s.string === "world");
+
+      expect(newHello?.id).toBe(oldHello.id);
+      expect(newWorld?.id).toBe(oldWorld.id);
     });
   });
 });

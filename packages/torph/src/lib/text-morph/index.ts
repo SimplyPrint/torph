@@ -46,13 +46,14 @@ export class TextMorph {
   private element: HTMLElement;
   private options: Omit<TextMorphOptions, "element" | "ease"> & { ease?: string } = {};
 
-  private data: HTMLElement | string;
+  private data: HTMLElement | string | null;
 
   private currentMeasures: Measures = {};
   private prevMeasures: Measures = {};
   private previousSegments: Segment[] = [];
   private isInitialRender = true;
   private reducedMotion: ReducedMotionState | null = null;
+  private _collapseTimer: ReturnType<typeof setTimeout> | null = null;
 
 
   constructor(options: TextMorphOptions) {
@@ -85,13 +86,14 @@ export class TextMorph {
       if (options.debug) this.element.setAttribute(ATTR_DEBUG, "");
     }
 
-    this.data = "";
+    this.data = null;
     if (!this.isDisabled()) {
       addStyles();
     }
   }
 
   destroy() {
+    if (this._collapseTimer) clearTimeout(this._collapseTimer);
     this.reducedMotion?.destroy();
     this.element.getAnimations().forEach((anim) => anim.cancel());
     this.element.removeAttribute(ATTR_ROOT);
@@ -201,13 +203,30 @@ export class TextMorph {
       return;
     }
 
-    transitionContainerSize(
-      element,
-      oldWidth,
-      oldHeight,
-      this.options.duration!,
-      this.options.onAnimationComplete,
-    );
+    if (segments.length === 0) {
+      // Keep container at old size while exits play, then collapse
+      element.style.width = `${oldWidth}px`;
+      element.style.height = `${oldHeight}px`;
+      const collapseTimer = setTimeout(() => {
+        element.style.width = "auto";
+        element.style.height = "auto";
+        this.options.onAnimationComplete?.();
+      }, this.options.duration!);
+      // Store for cleanup if another update comes before exits finish
+      this._collapseTimer = collapseTimer;
+    } else {
+      if (this._collapseTimer) {
+        clearTimeout(this._collapseTimer);
+        this._collapseTimer = null;
+      }
+      transitionContainerSize(
+        element,
+        oldWidth,
+        oldHeight,
+        this.options.duration!,
+        this.options.onAnimationComplete,
+      );
+    }
   }
 
   private updateStyles(segments: Segment[]) {

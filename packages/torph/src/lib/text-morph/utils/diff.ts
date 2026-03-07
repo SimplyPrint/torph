@@ -90,7 +90,7 @@ export function diffSegments(
   const newHasSpaces = newText.includes(" ");
   const oldWords = groupIntoWords(oldSegments);
 
-  if (oldWords.length <= 1 || !newHasSpaces) {
+  if (oldWords.length <= 1 && !newHasSpaces) {
     return { segments: segmentText(newText, locale), splits: new Map() };
   }
 
@@ -108,12 +108,29 @@ export function diffSegments(
   }
 
   // Pair unmatched words by similarity
-  const oldUnmatched = oldWordStrings
+  let oldUnmatched = oldWordStrings
     .map((_, i) => i)
     .filter((i) => !oldMatchedSet.has(i));
-  const newUnmatched = newWordStrings
+  let newUnmatched = newWordStrings
     .map((_, i) => i)
     .filter((i) => !newMatchedSet.has(i));
+
+  // Exact-match reordered words that LCS couldn't capture (order-preserving)
+  const exactUsed = new Set<number>();
+  for (const ni of newUnmatched) {
+    for (const oi of oldUnmatched) {
+      if (exactUsed.has(oi)) continue;
+      if (newWordStrings[ni] === oldWordStrings[oi]) {
+        newToOldWord.set(ni, oi);
+        exactUsed.add(oi);
+        break;
+      }
+    }
+  }
+  if (exactUsed.size > 0) {
+    oldUnmatched = oldUnmatched.filter((i) => !exactUsed.has(i));
+    newUnmatched = newUnmatched.filter((i) => !newToOldWord.has(i));
+  }
 
   const morphPairs = new Map<number, number>();
   const usedOld = new Set<number>();
