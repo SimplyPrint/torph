@@ -29,6 +29,31 @@ export function detachFromFlow(elements: HTMLElement[]) {
   });
 }
 
+export function splitWordSpans(
+  element: HTMLElement,
+  splits: Map<string, Segment[]>,
+) {
+  if (splits.size === 0) return;
+
+  const children = Array.from(element.children) as HTMLElement[];
+  for (const child of children) {
+    if (child.hasAttribute(ATTR_EXITING)) continue;
+    const id = child.getAttribute(ATTR_ID);
+    if (!id) continue;
+    const charSegs = splits.get(id);
+    if (!charSegs) continue;
+
+    for (const seg of charSegs) {
+      const span = document.createElement("span");
+      span.setAttribute(ATTR_ITEM, "");
+      span.setAttribute(ATTR_ID, seg.id);
+      span.textContent = seg.string;
+      child.before(span);
+    }
+    child.remove();
+  }
+}
+
 export function reconcileChildren(
   element: HTMLElement,
   oldChildren: HTMLElement[],

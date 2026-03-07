@@ -13,7 +13,8 @@ import {
   animateEnterOrPersist,
   transitionContainerSize,
 } from "./utils/animate";
-import { detachFromFlow, reconcileChildren } from "./utils/dom";
+import { detachFromFlow, splitWordSpans, reconcileChildren } from "./utils/dom";
+import { diffSegments } from "./utils/diff";
 import { addStyles, removeStyles } from "./utils/styles";
 import {
   ATTR_ROOT,
@@ -49,6 +50,7 @@ export class TextMorph {
 
   private currentMeasures: Measures = {};
   private prevMeasures: Measures = {};
+  private previousSegments: Segment[] = [];
   private isInitialRender = true;
   private reducedMotion: ReducedMotionState | null = null;
 
@@ -129,7 +131,19 @@ export class TextMorph {
     const oldWidth = element.offsetWidth;
     const oldHeight = element.offsetHeight;
 
-    const segments = segmentText(value, this.options.locale!);
+    let segments: Segment[];
+    let splits: Map<string, Segment[]>;
+
+    if (this.previousSegments.length > 0) {
+      const result = diffSegments(this.previousSegments, value, this.options.locale!);
+      segments = result.segments;
+      splits = result.splits;
+    } else {
+      segments = segmentText(value, this.options.locale!);
+      splits = new Map();
+    }
+
+    splitWordSpans(element, splits);
 
     this.prevMeasures = measure(this.element);
     const oldChildren = Array.from(element.children) as HTMLElement[];
@@ -177,6 +191,8 @@ export class TextMorph {
         scale: this.options.scale!,
       });
     });
+
+    this.previousSegments = segments;
 
     if (this.isInitialRender) {
       this.isInitialRender = false;
