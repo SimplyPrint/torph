@@ -17,6 +17,10 @@ const TORPH_CSS = `
   opacity: 1;
 }
 
+br[${ATTR_ITEM}] {
+  display: inline;
+}
+
 [${ATTR_ROOT}][${ATTR_DEBUG}] {
   outline: 2px solid magenta;
   [${ATTR_ITEM}] {

@@ -16,7 +16,7 @@ function groupIntoWords(segments: Segment[]): WordGroup[] {
   let current: Segment[] = [];
 
   for (const seg of segments) {
-    if (seg.string === "\u00A0") {
+    if (seg.string === "\u00A0" || seg.string === "\n") {
       if (current.length > 0) {
         groups.push({
           word: current.map((s) => s.string).join(""),
@@ -88,13 +88,28 @@ export function diffSegments(
   locale: Intl.LocalesArgument,
 ): DiffResult {
   const newHasSpaces = newText.includes(" ");
+  const newHasNewlines = newText.includes("\n");
   const oldWords = groupIntoWords(oldSegments);
 
-  if (oldWords.length <= 1 && !newHasSpaces) {
+  if (oldWords.length <= 1 && !newHasSpaces && !newHasNewlines) {
     return { segments: segmentText(newText, locale), splits: new Map() };
   }
 
-  const newWordStrings = newText.split(" ").filter((w) => w.length > 0);
+  // Split new text into words and track separators (space vs newline)
+  const newWordStrings: string[] = [];
+  const newSeparators: string[] = []; // separator BEFORE each word (index 0 is empty)
+  const parts = newText.split(/( |\n)/);
+  let lastSep = "";
+  for (const part of parts) {
+    if (part === " " || part === "\n") {
+      lastSep = part;
+    } else if (part.length > 0) {
+      newSeparators.push(lastSep);
+      newWordStrings.push(part);
+      lastSep = "";
+    }
+  }
+
   const oldWordStrings = oldWords.map((g) => g.word);
 
   // Word-level LCS
@@ -173,13 +188,18 @@ export function diffSegments(
 
   for (let ni = 0; ni < newWordStrings.length; ni++) {
     if (ni > 0) {
-      // Use character-position-based space IDs (matching segmentText's scheme)
-      // so spaces don't persist between different texts — this keeps exit
-      // anchors pointing at words rather than spaces.
-      segments.push({
-        id: `space-${charOffset}`,
-        string: "\u00A0",
-      });
+      const sep = newSeparators[ni] || " ";
+      if (sep === "\n") {
+        segments.push({
+          id: `newline-${charOffset}`,
+          string: "\n",
+        });
+      } else {
+        segments.push({
+          id: `space-${charOffset}`,
+          string: "\u00A0",
+        });
+      }
       charOffset++;
     }
 

@@ -62,7 +62,7 @@
   color: rgb(250, 204, 21);
 }
 
-.morphAllBtn {
+.button {
   font-size: 0.6rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -276,6 +276,7 @@
   font-family: var(--font-secondary);
   font-size: 1.5rem;
   font-weight: 500;
+  line-height: 1.5;
   color: #ffffff;
 }
 
@@ -321,6 +322,7 @@
 }
 
 .step {
+  font-variant-numeric: tabular-nums;
   font-size: 0.7rem;
   color: rgba(255, 255, 255, 0.3);
 }

@@ -3,21 +3,33 @@ import { ATTR_EXITING, ATTR_ID, ATTR_ITEM } from "./constants";
 import { parseTranslate } from "./animate";
 
 export function detachFromFlow(elements: HTMLElement[]) {
-  const snapshots = elements.map((child) => {
+  // Snapshot positions BEFORE removing BRs so layout hasn't shifted yet.
+  const snapshots = new Map<HTMLElement, { left: number; top: number; width: number; height: number; opacity: number }>();
+  for (const child of elements) {
+    if (child.tagName === "BR") continue;
     const { tx, ty } = parseTranslate(child);
     const opacity = Number(getComputedStyle(child).opacity) || 1;
     child.getAnimations().forEach((a) => a.cancel());
-    return {
+    snapshots.set(child, {
       left: child.offsetLeft + tx,
       top: child.offsetTop + ty,
       width: child.offsetWidth,
       height: child.offsetHeight,
       opacity,
-    };
-  });
+    });
+  }
 
-  elements.forEach((child, i) => {
-    const snap = snapshots[i]!;
+  // Remove BR elements — they can't be animated and must leave the flow
+  // before reconciliation to prevent layout jumps.
+  for (let i = elements.length - 1; i >= 0; i--) {
+    if (elements[i]!.tagName === "BR") {
+      elements[i]!.remove();
+      elements.splice(i, 1);
+    }
+  }
+
+  elements.forEach((child) => {
+    const snap = snapshots.get(child)!;
     child.setAttribute(ATTR_EXITING, "");
     child.style.position = "absolute";
     child.style.pointerEvents = "none";
@@ -78,6 +90,20 @@ export function reconcileChildren(
   });
 
   segments.forEach((segment) => {
+    if (segment.string === "\n") {
+      // Newline segments render as <br> elements
+      const existing = reusable.get(segment.id);
+      if (existing && existing.tagName === "BR") {
+        element.appendChild(existing);
+      } else {
+        const br = document.createElement("br");
+        br.setAttribute(ATTR_ITEM, "");
+        br.setAttribute(ATTR_ID, segment.id);
+        element.appendChild(br);
+      }
+      return;
+    }
+
     const existing = reusable.get(segment.id);
     if (existing) {
       existing.textContent = segment.string;

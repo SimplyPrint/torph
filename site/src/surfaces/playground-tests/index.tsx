@@ -470,6 +470,108 @@ const TESTS: TestCase[] = [
     values: ["Hello 👨‍👩‍👧‍👦", "Goodbye 👨‍👩‍👧‍👦"],
     verify: () => verifyWordPersistence("Hello 👨‍👩‍👧‍👦", "Goodbye 👨‍👩‍👧‍👦", "👨‍👩‍👧‍👦"),
   },
+  {
+    label: "Multiline basic",
+    description:
+      "Shared words should persist across line breaks. Newlines are treated as word boundaries.",
+    tags: ["multiline"],
+    values: ["hello\nworld", "hello\nuniverse"],
+    verify: () =>
+      verifyWordPersistence("hello\nworld", "hello\nuniverse", "hello"),
+  },
+  {
+    label: "Multiline add line",
+    description:
+      "Adding a new line should enter new words. Existing words should persist.",
+    tags: ["multiline", "enter"],
+    values: ["hello world\ngoodbye", "hello world\ngoodbye\nfarewell"],
+    verify: () =>
+      combineResults(
+        verifyWordPersistence(
+          "hello world\ngoodbye",
+          "hello world\ngoodbye\nfarewell",
+          "hello",
+        ),
+        verifyWordPersistence(
+          "hello world\ngoodbye",
+          "hello world\ngoodbye\nfarewell",
+          "goodbye",
+        ),
+      ),
+  },
+  {
+    label: "Multiline remove line",
+    description:
+      "Removing a line should exit those words. Remaining words should persist.",
+    tags: ["multiline", "exit"],
+    values: ["hello world\nfoo bar\ngoodbye moon", "hello world\ngoodbye moon"],
+    verify: () =>
+      combineResults(
+        verifyWordPersistence(
+          "hello world\nfoo bar\ngoodbye moon",
+          "hello world\ngoodbye moon",
+          "hello",
+        ),
+        verifyWordPersistence(
+          "hello world\nfoo bar\ngoodbye moon",
+          "hello world\ngoodbye moon",
+          "goodbye",
+        ),
+        verifyWordAbsent(
+          "hello world\nfoo bar\ngoodbye moon",
+          "hello world\ngoodbye moon",
+          "foo",
+        ),
+      ),
+  },
+  {
+    label: "Multiline reorder",
+    description:
+      "Swapping line order. Shared words should persist and FLIP to new positions.",
+    tags: ["multiline", "flip"],
+    values: ["alpha bravo\ncharlie delta", "charlie delta\nalpha bravo"],
+    verify: () =>
+      combineResults(
+        verifyWordPersistence(
+          "alpha bravo\ncharlie delta",
+          "charlie delta\nalpha bravo",
+          "alpha",
+        ),
+        verifyWordPersistence(
+          "alpha bravo\ncharlie delta",
+          "charlie delta\nalpha bravo",
+          "charlie",
+        ),
+      ),
+  },
+  {
+    label: "Multiline with edits",
+    description:
+      "Lines change content while shared words persist across the multiline transition.",
+    tags: ["multiline", "flip"],
+    values: [
+      "the quick brown fox\njumps over the lazy dog",
+      "the slow red fox\nleaps over the happy cat",
+    ],
+    verify: () =>
+      combineResults(
+        verifyWordPersistence(
+          "the quick brown fox\njumps over the lazy dog",
+          "the slow red fox\nleaps over the happy cat",
+          "the",
+        ),
+        verifyWordPersistence(
+          "the quick brown fox\njumps over the lazy dog",
+          "the slow red fox\nleaps over the happy cat",
+          "fox",
+        ),
+        verifyWordPersistence(
+          "the quick brown fox\njumps over the lazy dog",
+          "the slow red fox\nleaps over the happy cat",
+          "over",
+        ),
+      ),
+  },
 ];
 
 const ALL_TAGS = [...new Set(TESTS.flatMap((t) => t.tags))].sort();
@@ -677,27 +779,6 @@ function TestCard({
             {auto ? "Stop" : "Auto"}
           </Button>
         )}
-        <button
-          type="button"
-          className={`${styles.iconBtn} ${showInspector ? styles.iconBtnActive : ""}`}
-          onClick={() => setShowInspector((s) => !s)}
-          title={showInspector ? "Hide inspector" : "Show inspector"}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            {showInspector ? (
-              <>
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-                <line x1="1" y1="1" x2="23" y2="23" />
-              </>
-            ) : (
-              <>
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </>
-            )}
-          </svg>
-        </button>
         <div className={styles.speedToggle}>
           {(Object.keys(SPEEDS) as Speed[]).map((s) => (
             <button
@@ -723,12 +804,45 @@ function TestCard({
           ))}
         </div>
         <div className={styles.stepGroup}>
-          <span className={styles.step}>
-            {index + 1} / {test.values.length}
-          </span>
           <div className={styles.progressTrack}>
             <div className={styles.progressBar} ref={progressRef} />
           </div>
+          <span className={styles.step}>
+            {index + 1} / {test.values.length}
+          </span>
+          <button type="button" onClick={advance} className={styles.button}>
+            Morph
+          </button>
+          <button
+            type="button"
+            className={`${styles.iconBtn} ${showInspector ? styles.iconBtnActive : ""}`}
+            onClick={() => setShowInspector((s) => !s)}
+            title={showInspector ? "Hide inspector" : "Show inspector"}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {showInspector ? (
+                <>
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </>
+              ) : (
+                <>
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </>
+              )}
+            </svg>
+          </button>
         </div>
       </div>
       {showInspector && (
@@ -962,14 +1076,14 @@ export const PlaygroundTests = () => {
           <div className={styles.summaryActions}>
             <button
               type="button"
-              className={styles.morphAllBtn}
+              className={styles.button}
               onClick={handleCopy}
             >
               {copied ? "Copied!" : "Copy Results"}
             </button>
             <button
               type="button"
-              className={styles.morphAllBtn}
+              className={styles.button}
               onClick={() => setMorphAllSignal((s) => s + 1)}
             >
               Morph All

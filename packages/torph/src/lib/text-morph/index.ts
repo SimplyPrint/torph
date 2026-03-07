@@ -242,6 +242,7 @@ export class TextMorph {
 
     children.forEach((child, index) => {
       if (child.hasAttribute(ATTR_EXITING)) return;
+      if (child.tagName === "BR") return;
       const key = child.getAttribute(ATTR_ID) || `child-${index}`;
       if (key === "empty") return;
       const isNew = !this.prevMeasures[key];
