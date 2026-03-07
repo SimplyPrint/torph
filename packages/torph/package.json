@@ -1,6 +1,6 @@
 {
   "name": "torph",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Dependency-free animated text component.",
   "homepage": "https://torph.lochie.me",
   "author": "Lochie Axon",
@@ -37,6 +37,7 @@
         "import": "./dist/svelte/index.d.mts",
         "require": "./dist/svelte/index.d.ts"
       },
+      "svelte": "./dist/svelte/index.mjs",
       "import": "./dist/svelte/index.mjs",
       "require": "./dist/svelte/index.js"
     }
@@ -45,7 +46,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && node scripts/build-svelte.mjs",
     "dev": "tsup --watch",
     "lint": "eslint -c .eslintrc.cjs ./src/**/*.{ts,tsx}",
     "lint:fix": "eslint --fix -c .eslintrc.cjs ./src/**/*.{ts,tsx}",

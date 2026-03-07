@@ -4,19 +4,19 @@ export const examples = {
   // options
 });
 
-textmorph.update('{EXAMPLE_TEXT}');
+textmorph.update('#');
 `,
-  react: `<TextMorph>{EXAMPLE_TEXT}</TextMorph>`,
+  react: `<TextMorph>#</TextMorph>`,
   vue: `<template>
-  <TextMorph>{EXAMPLE_TEXT}</TextMorph>
+  <TextMorph :text="#" />
 </template>
 
 <script setup>
   import { TextMorph } from "torph/vue";
 </script>`,
-  svelte: `<TextMorph text="{EXAMPLE_TEXT}"/>`,
+  svelte: `<TextMorph text="#"/>`,
 };
 
 export const populateExample = (example: string, exampleText: string) => {
-  return example.replace("{EXAMPLE_TEXT}", exampleText);
+  return example.replace("#", exampleText);
 };

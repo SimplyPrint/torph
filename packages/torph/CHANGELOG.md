@@ -1,5 +1,11 @@
 # torph
 
+## 0.0.9
+
+### Patch Changes
+
+- fix: ship raw .svelte source for SSR compatibility, deduplicate core lib from framework bundles
+
 ## 0.0.8
 
 ### Patch Changes

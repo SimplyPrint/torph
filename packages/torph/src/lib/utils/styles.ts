@@ -1,8 +1,4 @@
-import {
-  ATTR_ROOT,
-  ATTR_ITEM,
-  ATTR_DEBUG,
-} from "./constants";
+import { ATTR_ROOT, ATTR_ITEM, ATTR_DEBUG } from "./constants";
 
 const TORPH_CSS = `
 [${ATTR_ROOT}] {
@@ -11,6 +7,7 @@ const TORPH_CSS = `
   will-change: width, height;
   transition-property: width, height;
   white-space: nowrap;
+  text-align: left;
 }
 
 [${ATTR_ITEM}] {
