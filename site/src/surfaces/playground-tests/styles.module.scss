@@ -118,10 +118,11 @@
 }
 
 .summaryDots {
-  display: flex;
-  gap: 0.3rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 0.5rem);
+  gap: 0.25rem;
+  justify-content: end;
+  max-width: 9rem;
 }
 
 .dotPass,
@@ -130,7 +131,7 @@
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 50%;
-  cursor: default;
+  cursor: pointer;
 }
 
 .dotPass {
@@ -478,7 +479,7 @@
   z-index: 10;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
   border-radius: 0.75rem;

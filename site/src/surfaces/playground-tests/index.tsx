@@ -6,6 +6,7 @@ import { TextMorph } from "torph/react";
 import { segmentText, diffSegments, DEFAULT_TEXT_MORPH_OPTIONS } from "torph";
 import type { Segment } from "torph";
 import { Button } from "@/components/button";
+import { Tooltip } from "@/components/tooltip";
 import bundleSizes from "./bundle-sizes.json";
 import pkg from "../../../../packages/torph/package.json";
 
@@ -402,8 +403,12 @@ function verifyNoJump(
 
   // Root position shift (viewport coords)
   const rootDx = after.rootRect.left - before.rootRect.left;
+  const rootDy = after.rootRect.top - before.rootRect.top;
   if (Math.abs(rootDx) > 0.5) {
     context.push(`rootX: ${rootDx > 0 ? "+" : ""}${rootDx.toFixed(1)}`);
+  }
+  if (Math.abs(rootDy) > 0.5) {
+    context.push(`rootY: ${rootDy > 0 ? "+" : ""}${rootDy.toFixed(1)}`);
   }
 
   // Check each item that existed before
@@ -438,6 +443,98 @@ function verifyNoJump(
     return { pass: false, detail: `${header} ${jumps.join("; ")}` };
   }
   return { pass: true, detail: `${header} no frame-0 jump` };
+}
+
+// ── Frame performance monitor ──
+
+type PerfResult = {
+  pass: boolean;
+  detail: string;
+  totalFrames: number;
+  droppedFrames: number;
+  longestFrame: number;
+  avgFrame: number;
+  morphTime: number;
+};
+
+class FrameMonitor {
+  private frames: number[] = [];
+  private rafId: number | null = null;
+  private lastTime = 0;
+  private running = false;
+  private startTime = 0;
+  private firstFrameTime = 0;
+
+  start() {
+    this.stop();
+    this.frames = [];
+    this.lastTime = 0;
+    this.running = true;
+    this.startTime = performance.now();
+    this.firstFrameTime = 0;
+    this.rafId = requestAnimationFrame(this.tick);
+  }
+
+  stop(): PerfResult {
+    this.running = false;
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+
+    const frameTimes = this.frames;
+    // Time from start() to first rAF = sync morph work + first paint
+    const morphTime = this.firstFrameTime > 0 ? this.firstFrameTime - this.startTime : 0;
+
+    if (frameTimes.length === 0) {
+      return {
+        pass: true,
+        detail: `no frames | morph=${morphTime.toFixed(1)}ms`,
+        totalFrames: 0,
+        droppedFrames: 0,
+        longestFrame: 0,
+        avgFrame: 0,
+        morphTime,
+      };
+    }
+
+    const longestFrame = Math.max(...frameTimes);
+    const avgFrame = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
+    // A "dropped" frame is one where the gap exceeds 1.5x of a 60fps frame (25ms)
+    const dropThreshold = 25;
+    const droppedFrames = frameTimes.filter((t) => t > dropThreshold).length;
+    const totalFrames = frameTimes.length;
+
+    const issues: string[] = [];
+    if (droppedFrames > 0) {
+      issues.push(`${droppedFrames} dropped`);
+    }
+    if (longestFrame > 50) {
+      issues.push(`worst: ${longestFrame.toFixed(1)}ms`);
+    }
+    if (morphTime > 16) {
+      issues.push(`morph: ${morphTime.toFixed(1)}ms`);
+    }
+
+    const pass = droppedFrames === 0 && longestFrame <= 50;
+    const detail = pass
+      ? `${totalFrames}f avg=${avgFrame.toFixed(1)}ms worst=${longestFrame.toFixed(1)}ms morph=${morphTime.toFixed(1)}ms`
+      : `${totalFrames}f ${issues.join(" | ")} avg=${avgFrame.toFixed(1)}ms morph=${morphTime.toFixed(1)}ms`;
+
+    return { pass, detail, totalFrames, droppedFrames, longestFrame, avgFrame, morphTime };
+  }
+
+  private tick = () => {
+    if (!this.running) return;
+    const now = performance.now();
+    if (this.lastTime > 0) {
+      this.frames.push(now - this.lastTime);
+    } else {
+      this.firstFrameTime = now;
+    }
+    this.lastTime = now;
+    this.rafId = requestAnimationFrame(this.tick);
+  };
 }
 
 function verifyDomStandard(root: HTMLElement): { pass: boolean; detail: string } {
@@ -1119,10 +1216,12 @@ function SegmentInspector({ from, to }: { from: string; to: string }) {
         <span className={styles.inspectorLabel}>Old segments</span>
         <div className={styles.segmentList}>
           {oldSegs.map((s, i) => (
-            <span key={i} className={styles.segmentChip} title={`ID: ${s.id}`}>
-              {s.string === "\u00A0" ? "·" : s.string}
-              <span className={styles.segmentId}>{s.id.slice(0, 6)}</span>
-            </span>
+            <Tooltip content={`ID: ${s.id}`}>
+              <span key={i} className={styles.segmentChip}>
+                {s.string === "\u00A0" ? "·" : s.string}
+                <span className={styles.segmentId}>{s.id.slice(0, 6)}</span>
+              </span>
+            </Tooltip>
           ))}
         </div>
       </div>
@@ -1132,14 +1231,15 @@ function SegmentInspector({ from, to }: { from: string; to: string }) {
           {newSegs.map((s, i) => {
             const persisted = oldSegs.some((o) => o.id === s.id);
             return (
-              <span
-                key={i}
-                className={`${styles.segmentChip} ${persisted ? styles.segmentPersisted : styles.segmentNew}`}
-                title={`ID: ${s.id}${persisted ? " (persisted)" : " (new)"}`}
-              >
-                {s.string === "\u00A0" ? "·" : s.string}
-                <span className={styles.segmentId}>{s.id.slice(0, 6)}</span>
-              </span>
+              <Tooltip content={`ID: ${s.id}${persisted ? " (persisted)" : " (new)"}`}>
+                <span
+                  key={i}
+                  className={`${styles.segmentChip} ${persisted ? styles.segmentPersisted : styles.segmentNew}`}
+                >
+                  {s.string === "\u00A0" ? "·" : s.string}
+                  <span className={styles.segmentId}>{s.id.slice(0, 6)}</span>
+                </span>
+              </Tooltip>
             );
           })}
         </div>
@@ -1149,13 +1249,14 @@ function SegmentInspector({ from, to }: { from: string; to: string }) {
           <span className={styles.inspectorLabel}>Splits</span>
           <div className={styles.segmentList}>
             {[...splits.entries()].map(([word, chars]) => (
-              <span
-                key={word}
-                className={styles.segmentChip}
-                title={`"${word}" split into ${chars.length} chars`}
-              >
-                {word} → {chars.map((c) => c.string).join("")}
-              </span>
+              <Tooltip content={`"${word}" split into ${chars.length} chars`}>
+                <span
+                  key={word}
+                  className={styles.segmentChip}
+                >
+                  {word} → {chars.map((c) => c.string).join("")}
+                </span>
+              </Tooltip>
             ))}
           </div>
         </div>
@@ -1181,9 +1282,11 @@ function TestCard({
   morphAllSignal,
   domResult,
   jumpResult,
+  perfResult,
   cardRef,
   onDomResult,
   onJumpResult,
+  onPerfResult,
   speed,
   easing,
   align: globalAlign,
@@ -1195,9 +1298,11 @@ function TestCard({
   morphAllSignal: number;
   domResult: { pass: boolean; detail: string } | null;
   jumpResult: { pass: boolean; detail: string } | null;
+  perfResult: PerfResult | null;
   cardRef?: React.Ref<HTMLDivElement>;
   onDomResult?: (result: { pass: boolean; detail: string } | null) => void;
   onJumpResult?: (result: { pass: boolean; detail: string } | null) => void;
+  onPerfResult?: (result: PerfResult | null) => void;
   speed: Speed;
   easing: EasingKey;
   align: Align;
@@ -1211,6 +1316,7 @@ function TestCard({
   const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
   const bodyRef = React.useRef<HTMLDivElement | null>(null);
   const preAnimSnap = React.useRef<JumpSnapshot | null>(null);
+  const frameMonitor = React.useRef(new FrameMonitor());
 
   const advance = React.useCallback(() => {
     setIndex((i) => (i + 1) % test.values.length);
@@ -1237,43 +1343,6 @@ function TestCard({
       <div className={styles.cardHeader}>
         <div className={styles.headerLeft}>
           <span className={styles.label}>{test.label}</span>
-          {result && (
-            <span
-              className={result.pass ? styles.badgePass : styles.badgeFail}
-              title={result.detail}
-            >
-              {result.pass ? "PASS" : "FAIL"}
-            </span>
-          )}
-          {domResult && (
-            <span
-              className={domResult.pass ? styles.badgePass : styles.badgeFail}
-              title={domResult.detail}
-            >
-              DOM {domResult.pass ? "PASS" : "FAIL"}
-            </span>
-          )}
-          {!domResult && test.verifyDom && (
-            <span className={styles.perfBadge} title="Morph to run DOM checks">
-              DOM …
-            </span>
-          )}
-          {jumpResult && (
-            <span
-              className={jumpResult.pass ? styles.badgePass : styles.badgeFail}
-              title={jumpResult.detail}
-            >
-              JUMP {jumpResult.pass ? "OK" : "FAIL"}
-            </span>
-          )}
-          {timeMs !== null && (
-            <span
-              className={styles.perfBadge}
-              title={`Avg over 100 iterations`}
-            >
-              {timeMs < 0.01 ? "<0.01" : timeMs.toFixed(2)}ms
-            </span>
-          )}
         </div>
         <div className={styles.tags}>
           {test.tags.map((tag) => (
@@ -1292,6 +1361,9 @@ function TestCard({
         {jumpResult && !jumpResult.pass && (
           <> · <span style={{ color: "rgb(251, 191, 36)" }}>JUMP: {jumpResult.detail}</span></>
         )}
+        {perfResult && !perfResult.pass && (
+          <> · <span style={{ color: "rgb(251, 146, 60)" }}>PERF: {perfResult.detail}</span></>
+        )}
       </p>
       <div
         ref={bodyRef}
@@ -1304,6 +1376,7 @@ function TestCard({
           ease={EASINGS[easing]}
           debug={debug}
           onAnimationStart={() => {
+            frameMonitor.current.start();
             if (progressRef.current) {
               const el = progressRef.current;
               el.style.transition = "none";
@@ -1326,6 +1399,7 @@ function TestCard({
             }
           }}
           onAnimationComplete={() => {
+            onPerfResult?.(frameMonitor.current.stop());
             if (progressRef.current) {
               progressRef.current.style.transition = "none";
               progressRef.current.style.width = "0%";
@@ -1342,6 +1416,55 @@ function TestCard({
         </TextMorph>
       </div>
       <div className={styles.cardFooter}>
+        <Tooltip content={result?.detail ?? ""}>
+          <span
+            className={result ? (result.pass ? styles.badgePass : styles.badgeFail) : styles.perfBadge}
+          >
+            <TextMorph as="span" duration={150}>
+              {result ? (result.pass ? "PASS" : "FAIL") : "…"}
+            </TextMorph>
+          </span>
+        </Tooltip>
+        {test.verifyDom && (
+          <Tooltip content={domResult?.detail ?? ""}>
+            <span
+              className={domResult ? (domResult.pass ? styles.badgePass : styles.badgeFail) : styles.perfBadge}
+            >
+              <TextMorph as="span" duration={150}>
+                {domResult ? `DOM ${domResult.pass ? "PASS" : "FAIL"}` : "DOM …"}
+              </TextMorph>
+            </span>
+          </Tooltip>
+        )}
+        <Tooltip content={jumpResult?.detail ?? ""}>
+          <span
+            className={jumpResult ? (jumpResult.pass ? styles.badgePass : styles.badgeFail) : styles.perfBadge}
+          >
+            <TextMorph as="span" duration={150}>
+              {jumpResult ? `JUMP ${jumpResult.pass ? "OK" : "FAIL"}` : "JUMP …"}
+            </TextMorph>
+          </span>
+        </Tooltip>
+        <Tooltip content={perfResult?.detail ?? ""}>
+          <span
+            className={perfResult ? (perfResult.pass ? styles.badgePass : styles.badgeFail) : styles.perfBadge}
+          >
+            <TextMorph as="span" duration={150}>
+              {perfResult
+                ? perfResult.pass
+                  ? `${perfResult.totalFrames}f`
+                  : `${perfResult.droppedFrames} drop`
+                : "PERF …"}
+            </TextMorph>
+          </span>
+        </Tooltip>
+        <Tooltip content={timeMs !== null ? "Avg over 100 iterations" : ""}>
+          <span className={styles.perfBadge}>
+            <TextMorph as="span" duration={150}>
+              {timeMs !== null ? `${timeMs < 0.01 ? "<0.01" : timeMs.toFixed(2)}ms` : "—"}
+            </TextMorph>
+          </span>
+        </Tooltip>
         {isSpamTest && (
           <Button type="button" onClick={() => setAuto((a) => !a)}>
             {auto ? "Stop" : "Auto"}
@@ -1357,12 +1480,12 @@ function TestCard({
           <button type="button" onClick={advance} className={styles.button}>
             Morph
           </button>
-          <button
-            type="button"
-            className={`${styles.iconBtn} ${showInspector ? styles.iconBtnActive : ""}`}
-            onClick={() => setShowInspector((s) => !s)}
-            title={showInspector ? "Hide inspector" : "Show inspector"}
-          >
+          <Tooltip content={showInspector ? "Hide inspector" : "Show inspector"}>
+            <button
+              type="button"
+              className={`${styles.iconBtn} ${showInspector ? styles.iconBtnActive : ""}`}
+              onClick={() => setShowInspector((s) => !s)}
+            >
             <svg
               width="14"
               height="14"
@@ -1387,6 +1510,7 @@ function TestCard({
               )}
             </svg>
           </button>
+          </Tooltip>
         </div>
       </div>
       {showInspector && (
@@ -1487,12 +1611,13 @@ function copyResultsToClipboard(
   results: TestResult[],
   domResults: (({ pass: boolean; detail: string }) | null)[],
   jumpResults: (({ pass: boolean; detail: string }) | null)[],
+  perfResults: (PerfResult | null)[],
 ) {
   const lines = [
     "# Torph Test Results",
     "",
-    `| Test | Data | DOM | DOM Detail | Jump | Jump Detail | Time |`,
-    `|------|------|-----|------------|------|-------------|------|`,
+    `| Test | Data | DOM | DOM Detail | Jump | Jump Detail | Perf | Perf Detail | Time |`,
+    `|------|------|-----|------------|------|-------------|------|-------------|------|`,
     ...results.map((r, i) => {
       const status = !r.result ? "Skip" : r.result.pass ? "Pass" : "Fail";
       const dom = domResults[i]
@@ -1511,8 +1636,16 @@ function copyResultsToClipboard(
       const jumpDetail = jumpResults[i]
         ? jumpResults[i]!.detail
         : "-";
+      const perf = perfResults[i]
+        ? perfResults[i]!.pass
+          ? "Pass"
+          : "Fail"
+        : "-";
+      const perfDetail = perfResults[i]
+        ? perfResults[i]!.detail
+        : "-";
       const time = r.timeMs !== null ? `${r.timeMs.toFixed(2)}ms` : "-";
-      return `| ${r.label} | ${status} | ${dom} | ${domDetail} | ${jump} | ${jumpDetail} | ${time} |`;
+      return `| ${r.label} | ${status} | ${dom} | ${domDetail} | ${jump} | ${jumpDetail} | ${perf} | ${perfDetail} | ${time} |`;
     }),
     "",
     `Generated: ${new Date().toISOString()}`,
@@ -1520,11 +1653,54 @@ function copyResultsToClipboard(
   navigator.clipboard.writeText(lines.join("\n"));
 }
 
+function copyFailsToClipboard(
+  results: TestResult[],
+  domResults: (({ pass: boolean; detail: string }) | null)[],
+  jumpResults: (({ pass: boolean; detail: string }) | null)[],
+  perfResults: (PerfResult | null)[],
+) {
+  const failed = results
+    .map((r, i) => ({ r, i }))
+    .filter(({ r, i }) => {
+      const dataFail = r.result && !r.result.pass;
+      const domFail = domResults[i] && !domResults[i]!.pass;
+      const jumpFail = jumpResults[i] && !jumpResults[i]!.pass;
+      const perfFail = perfResults[i] && !perfResults[i]!.pass;
+      return dataFail || domFail || jumpFail || perfFail;
+    });
+
+  if (failed.length === 0) {
+    navigator.clipboard.writeText("No failures.");
+    return false;
+  }
+
+  const lines = [
+    "# Torph Failed Tests",
+    "",
+    `| Test | Data | DOM | DOM Detail | Jump | Jump Detail | Perf | Perf Detail |`,
+    `|------|------|-----|------------|------|-------------|------|-------------|`,
+    ...failed.map(({ r, i }) => {
+      const status = !r.result ? "Skip" : r.result.pass ? "Pass" : "Fail";
+      const dom = domResults[i] ? (domResults[i]!.pass ? "Pass" : "Fail") : "-";
+      const domDetail = domResults[i] ? domResults[i]!.detail : "-";
+      const jump = jumpResults[i] ? (jumpResults[i]!.pass ? "Pass" : "Fail") : "-";
+      const jumpDetail = jumpResults[i] ? jumpResults[i]!.detail : "-";
+      const perf = perfResults[i] ? (perfResults[i]!.pass ? "Pass" : "Fail") : "-";
+      const perfDetail = perfResults[i] ? perfResults[i]!.detail : "-";
+      return `| ${r.label} | ${status} | ${dom} | ${domDetail} | ${jump} | ${jumpDetail} | ${perf} | ${perfDetail} |`;
+    }),
+    "",
+    `Generated: ${new Date().toISOString()}`,
+  ];
+  navigator.clipboard.writeText(lines.join("\n"));
+  return true;
+}
+
 export const PlaygroundTests = () => {
   const [activeTag, setActiveTag] = React.useState<string | null>(null);
   const [failOnly, setFailOnly] = React.useState(false);
   const [morphAllSignal, setMorphAllSignal] = React.useState(0);
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = React.useState<string | false>(false);
   const [speed, setSpeed] = React.useState<Speed>("default");
   const [easing, setEasing] = React.useState<EasingKey>("default");
   const [align, setAlign] = React.useState<Align>("left");
@@ -1536,6 +1712,9 @@ export const PlaygroundTests = () => {
   const [jumpResults, setJumpResults] = React.useState<
     (({ pass: boolean; detail: string }) | null)[]
   >(() => TESTS.map(() => null));
+  const [perfResults, setPerfResults] = React.useState<
+    (PerfResult | null)[]
+  >(() => TESTS.map(() => null));
   const cardRefs = React.useRef<(HTMLDivElement | null)[]>([]);
 
   const filteredIndices = TESTS.map((_, i) => i).filter((i) => {
@@ -1544,7 +1723,8 @@ export const PlaygroundTests = () => {
       const dataFail = results[i]?.result?.pass === false;
       const domFail = domResults[i]?.pass === false;
       const jumpFail = jumpResults[i]?.pass === false;
-      if (!dataFail && !domFail && !jumpFail) return false;
+      const perfFail = perfResults[i]?.pass === false;
+      if (!dataFail && !domFail && !jumpFail && !perfFail) return false;
     }
     return true;
   });
@@ -1554,6 +1734,7 @@ export const PlaygroundTests = () => {
   const failed = results.filter((r) => r.result && !r.result.pass).length;
   const domFailed = domResults.filter((r) => r && !r.pass).length;
   const jumpFailed = jumpResults.filter((r) => r && !r.pass).length;
+  const perfFailed = perfResults.filter((r) => r && !r.pass).length;
   const total = results.filter((r) => r.result).length;
 
   React.useEffect(() => {
@@ -1589,8 +1770,14 @@ export const PlaygroundTests = () => {
   }, []);
 
   const handleCopy = () => {
-    copyResultsToClipboard(results, domResults, jumpResults);
-    setCopied(true);
+    copyResultsToClipboard(results, domResults, jumpResults, perfResults);
+    setCopied("all");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyFails = () => {
+    const hadFails = copyFailsToClipboard(results, domResults, jumpResults, perfResults);
+    setCopied(hadFails ? "fails" : "none");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -1610,6 +1797,9 @@ export const PlaygroundTests = () => {
               {jumpFailed > 0 && (
                 <span className={styles.summaryFail}> · {jumpFailed} JUMP failed</span>
               )}
+              {perfFailed > 0 && (
+                <span className={styles.summaryFail}> · {perfFailed} PERF failed</span>
+              )}
             </span>
             <span className={styles.version}>
               v{pkg.version}
@@ -1617,18 +1807,25 @@ export const PlaygroundTests = () => {
             </span>
           </div>
           <div className={styles.summaryDots}>
-            {results.map((r) => (
-              <span
-                key={r.label}
-                className={
-                  !r.result
-                    ? styles.dotSkip
-                    : r.result.pass
-                      ? styles.dotPass
-                      : styles.dotFail
-                }
-                title={`${r.label}${r.result ? `: ${r.result.detail}` : ""}`}
-              />
+            {results.map((r, i) => (
+              <Tooltip content={`${r.label}${r.result ? `: ${r.result.detail}` : ""}`}>
+                <span
+                  key={r.label}
+                  className={
+                    !r.result
+                      ? styles.dotSkip
+                      : r.result.pass
+                        ? styles.dotPass
+                        : styles.dotFail
+                  }
+                  onClick={() =>
+                    cardRefs.current[i]?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "center",
+                    })
+                  }
+                />
+              </Tooltip>
             ))}
           </div>
         </div>
@@ -1640,23 +1837,24 @@ export const PlaygroundTests = () => {
                 : 0;
               const diffStr = diff > 0 ? `+${diff}` : `${diff}`;
               return (
-                <span
-                  key={entry.name}
-                  className={styles.bundleEntry}
-                  title={`${entry.name}: ${(entry.raw / 1024).toFixed(1)}kB raw · published: ${(entry.publishedGzip / 1024).toFixed(1)}kB gz`}
-                >
-                  {entry.name}{" "}
-                  <strong>{(entry.gzip / 1024).toFixed(1)}kB</strong>
-                  {diff !== 0 && (
-                    <span
-                      className={
-                        diff > 0 ? styles.bundleDiffUp : styles.bundleDiffDown
-                      }
-                    >
-                      {diffStr}B
-                    </span>
-                  )}
-                </span>
+                <Tooltip content={`${entry.name}: ${(entry.raw / 1024).toFixed(1)}kB raw · published: ${(entry.publishedGzip / 1024).toFixed(1)}kB gz`}>
+                  <span
+                    key={entry.name}
+                    className={styles.bundleEntry}
+                  >
+                    {entry.name}{" "}
+                    <strong>{(entry.gzip / 1024).toFixed(1)}kB</strong>
+                    {diff !== 0 && (
+                      <span
+                        className={
+                          diff > 0 ? styles.bundleDiffUp : styles.bundleDiffDown
+                        }
+                      >
+                        {diffStr}B
+                      </span>
+                    )}
+                  </span>
+                </Tooltip>
               );
             })}
           </div>
@@ -1664,9 +1862,16 @@ export const PlaygroundTests = () => {
             <button
               type="button"
               className={styles.button}
+              onClick={handleCopyFails}
+            >
+              {copied === "fails" ? "Copied!" : copied === "none" ? "No Fails" : "Copy Fails"}
+            </button>
+            <button
+              type="button"
+              className={styles.button}
               onClick={handleCopy}
             >
-              {copied ? "Copied!" : "Copy Results"}
+              {copied === "all" ? "Copied!" : "Copy All"}
             </button>
           </div>
         </div>
@@ -1700,6 +1905,7 @@ export const PlaygroundTests = () => {
           morphAllSignal={morphAllSignal}
           domResult={domResults[i] ?? null}
           jumpResult={jumpResults[i] ?? null}
+          perfResult={perfResults[i] ?? null}
           speed={speed}
           easing={easing}
           align={align}
@@ -1713,6 +1919,13 @@ export const PlaygroundTests = () => {
           }
           onJumpResult={(r) =>
             setJumpResults((prev) => {
+              const next = [...prev];
+              next[i] = r;
+              return next;
+            })
+          }
+          onPerfResult={(r) =>
+            setPerfResults((prev) => {
               const next = [...prev];
               next[i] = r;
               return next;
@@ -1753,15 +1966,16 @@ export const PlaygroundTests = () => {
         </div>
         <div className={styles.speedToggle}>
           {ALIGNS.map((a) => (
-            <button
-              key={a}
-              type="button"
-              className={`${styles.speedBtn} ${align === a ? styles.speedBtnActive : ""}`}
-              onClick={() => setAlign(a)}
-              title={`Align ${a}`}
-            >
-              {a === "left" ? "L" : a === "center" ? "C" : "R"}
-            </button>
+            <Tooltip content={`Align ${a}`}>
+              <button
+                key={a}
+                type="button"
+                className={`${styles.speedBtn} ${align === a ? styles.speedBtnActive : ""}`}
+                onClick={() => setAlign(a)}
+              >
+                {a === "left" ? "L" : a === "center" ? "C" : "R"}
+              </button>
+            </Tooltip>
           ))}
         </div>
         <button
