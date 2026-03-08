@@ -34,88 +34,175 @@ export const PlaygroundTests = () => {
   );
   const cardRefs = React.useRef<(HTMLDivElement | null)[]>([]);
 
-  // Run-all sequencer state
-  type RunItem = { testIndex: number; align: Align };
+  // Run-all state: morph cards sequentially, cycling through alignments
   const [running, setRunning] = React.useState(false);
-  const [runQueue, setRunQueue] = React.useState<RunItem[]>([]);
-  const [runCurrent, setRunCurrent] = React.useState<RunItem | null>(null);
-  const [runCompleted, setRunCompleted] = React.useState(0);
-  const [runTotal, setRunTotal] = React.useState(0);
+  const [runPhase, setRunPhase] = React.useState<Align | null>(null);
   const [hasRunResults, setHasRunResults] = React.useState(false);
   const [showResults, setShowResults] = React.useState(false);
-  const [autoRunSignal, setAutoRunSignal] = React.useState(0);
+  const [runProgress, setRunProgress] = React.useState<{
+    done: number;
+    total: number;
+  } | null>(null);
+  const [cardMorphSignals, setCardMorphSignals] = React.useState<number[]>(() =>
+    TESTS.map(() => 0),
+  );
   const resultsPanelRef = React.useRef<HTMLDivElement | null>(null);
+  const runTimers = React.useRef<ReturnType<typeof setTimeout>[]>([]);
+  const runQueue = React.useRef<{ cardIndex: number; align: Align }[]>([]);
+  const runQueuePos = React.useRef(0);
+  const runActive = React.useRef(false);
+  const animDurationRef = React.useRef<number>(SPEEDS["default"]);
+  const cardTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const runCardToken = React.useRef<symbol | null>(null);
+  const cardOnCompletesRef = React.useRef<((() => void) | null)[]>(
+    TESTS.map(() => null),
+  );
 
-  const startRunAll = React.useCallback(() => {
-    // Build queue: for each test, run all alignments before moving on
-    const items: RunItem[] = [];
-    for (let i = 0; i < TESTS.length; i++) {
-      for (const a of ALIGNS) {
-        items.push({ testIndex: i, align: a });
-      }
+  const clearRunTimers = () => {
+    runTimers.current.forEach(clearTimeout);
+    runTimers.current = [];
+  };
+
+  const advanceQueue = React.useCallback(() => {
+    if (!runActive.current) return;
+
+    const pos = runQueuePos.current;
+    const queue = runQueue.current;
+
+    if (pos >= queue.length) {
+      runActive.current = false;
+      setRunning(false);
+      setRunPhase(null);
+      setRunProgress(null);
+      setHasRunResults(true);
+      setShowResults(true);
+      return;
     }
-    setRunQueue(items);
-    setRunCurrent(items[0]!);
-    setRunCompleted(0);
-    setRunTotal(items.length);
-    setRunning(true);
-    setHasRunResults(false);
-    setShowResults(false);
-    setAutoRunSignal((s) => s + 1);
-    // Reset DOM/jump/perf results
+
+    const { cardIndex, align: nextAlign } = queue[pos]!;
+    runQueuePos.current = pos + 1;
+    setRunProgress({ done: pos, total: queue.length });
+    setAlign(nextAlign);
+    setRunPhase(nextAlign);
+
+    // Token prevents double-advance if both onComplete and timeout fire
+    const token = Symbol();
+    runCardToken.current = token;
+    const guard = () => {
+      if (runCardToken.current !== token) return;
+      runCardToken.current = null;
+      if (cardTimeout.current) {
+        clearTimeout(cardTimeout.current);
+        cardTimeout.current = null;
+      }
+      advanceQueue();
+    };
+
+    cardOnCompletesRef.current[cardIndex] = guard;
+
+    setCardMorphSignals((prev) => {
+      const next = [...prev];
+      next[cardIndex] = (next[cardIndex] ?? 0) + 1;
+      return next;
+    });
+
+    // Fallback if animation never fires (e.g. text unchanged)
+    cardTimeout.current = setTimeout(guard, animDurationRef.current + 200);
+  }, []);
+
+  const startBatchRun = React.useCallback((animDuration: number) => {
+    clearRunTimers();
+    runActive.current = false;
+    if (cardTimeout.current) {
+      clearTimeout(cardTimeout.current);
+      cardTimeout.current = null;
+    }
+
     setDomResults(TESTS.map(() => null));
     setJumpResults(TESTS.map(() => null));
     setPerfResults(TESTS.map(() => null));
+
+    const delay = animDuration + 200;
+    setAlign("left");
+    setRunPhase("left");
+    setRunning(true);
+    setHasRunResults(false);
+    setShowResults(false);
+    setRunProgress({ done: 0, total: 3 });
+    setMorphAllSignal((s) => s + 1);
+
+    runTimers.current.push(
+      setTimeout(() => {
+        setAlign("center");
+        setRunPhase("center");
+        setRunProgress({ done: 1, total: 3 });
+        setMorphAllSignal((s) => s + 1);
+      }, delay),
+    );
+    runTimers.current.push(
+      setTimeout(() => {
+        setAlign("right");
+        setRunPhase("right");
+        setRunProgress({ done: 2, total: 3 });
+        setMorphAllSignal((s) => s + 1);
+      }, delay * 2),
+    );
+    runTimers.current.push(
+      setTimeout(() => {
+        setRunning(false);
+        setRunPhase(null);
+        setRunProgress(null);
+        setHasRunResults(true);
+        setShowResults(true);
+      }, delay * 3),
+    );
   }, []);
 
-  const runAdvanceTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const handleCardRunComplete = React.useCallback(
-    (testIndex: number, runAlign: Align) => {
-      setRunCompleted((c) => c + 1);
-      setRunQueue((queue) => {
-        const remaining = queue.filter(
-          (item) => !(item.testIndex === testIndex && item.align === runAlign),
-        );
-        if (remaining.length > 0) {
-          const next = remaining[0]!;
-          // Delay between alignment passes on same card so the shift is visible
-          const delay = next.testIndex === testIndex ? 400 : 100;
-          setRunCurrent(next);
-          if (runAdvanceTimer.current) clearTimeout(runAdvanceTimer.current);
-          runAdvanceTimer.current = setTimeout(() => {
-            setAutoRunSignal((s) => s + 1);
-          }, delay);
-        } else {
-          setRunCurrent(null);
-          setRunning(false);
-          setHasRunResults(true);
-          setShowResults(true);
-        }
-        return remaining;
-      });
-    },
-    [],
-  );
+  const startRunAll = React.useCallback(
+    (animDuration: number) => {
+      clearRunTimers();
+      if (cardTimeout.current) {
+        clearTimeout(cardTimeout.current);
+        cardTimeout.current = null;
+      }
+      runActive.current = false;
 
-  // Auto-scroll to the active card during a run
-  React.useEffect(() => {
-    if (running && runCurrent) {
-      cardRefs.current[runCurrent.testIndex]?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }
-  }, [running, runCurrent]);
+      animDurationRef.current = animDuration;
+
+      setDomResults(TESTS.map(() => null));
+      setJumpResults(TESTS.map(() => null));
+      setPerfResults(TESTS.map(() => null));
+
+      const queue: { cardIndex: number; align: Align }[] = [];
+      for (const phase of ["left", "center", "right"] as Align[]) {
+        for (let i = 0; i < TESTS.length; i++) {
+          queue.push({ cardIndex: i, align: phase });
+        }
+      }
+      runQueue.current = queue;
+      runQueuePos.current = 0;
+      runActive.current = true;
+
+      setRunning(true);
+      setHasRunResults(false);
+      setShowResults(false);
+      setRunProgress({ done: 0, total: queue.length });
+
+      advanceQueue();
+    },
+    [advanceQueue],
+  );
 
   // Scroll to results panel when run finishes
   React.useEffect(() => {
     if (hasRunResults && showResults && !running) {
-      setTimeout(() => {
+      const id = setTimeout(() => {
         resultsPanelRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "start",
         });
       }, 100);
+      return () => clearTimeout(id);
     }
   }, [hasRunResults, showResults, running]);
 
@@ -172,10 +259,12 @@ export const PlaygroundTests = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const copiedTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleCopy = () => {
     copyResultsToClipboard(results, domResults, jumpResults, perfResults);
     setCopied("all");
-    setTimeout(() => setCopied(false), 2000);
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    copiedTimer.current = setTimeout(() => setCopied(false), 2000);
   };
 
   const handleCopyFails = () => {
@@ -186,7 +275,8 @@ export const PlaygroundTests = () => {
       perfResults,
     );
     setCopied(hadFails ? "fails" : "none");
-    setTimeout(() => setCopied(false), 2000);
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    copiedTimer.current = setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -196,23 +286,21 @@ export const PlaygroundTests = () => {
           <div className={styles.summaryLeft}>
             {running ? (
               <span className={styles.summaryLabel}>
-                Running {runCompleted}/{runTotal}
-                {runCurrent ? ` (${runCurrent.align})` : ""}…
+                Running…{" "}
+                {runProgress
+                  ? `${runProgress.done}/${runProgress.total}`
+                  : runPhase
+                    ? `(${runPhase})`
+                    : ""}
               </span>
             ) : (
               <span className={styles.summaryLabel}>
                 {passed}/{total} passed
                 {failed > 0 && (
-                  <span className={styles.summaryFail}>
-                    {" "}
-                    · {failed} failed
-                  </span>
+                  <span className={styles.summaryFail}> · {failed} failed</span>
                 )}
                 {domFailed > 0 && (
-                  <span className={styles.summaryFail}>
-                    {" "}
-                    · {domFailed} DOM
-                  </span>
+                  <span className={styles.summaryFail}> · {domFailed} DOM</span>
                 )}
                 {jumpFailed > 0 && (
                   <span className={styles.summaryFail}>
@@ -264,7 +352,9 @@ export const PlaygroundTests = () => {
           <div className={styles.runProgress}>
             <div
               className={styles.runProgressBar}
-              style={{ width: `${(runCompleted / runTotal) * 100}%` }}
+              style={{
+                width: `${runProgress ? (runProgress.done / runProgress.total) * 100 : 0}%`,
+              }}
             />
           </div>
         )}
@@ -413,10 +503,8 @@ export const PlaygroundTests = () => {
           perfResult={perfResults[i] ?? null}
           speed={speed}
           easing={easing}
-          align={running && runCurrent?.testIndex === i ? runCurrent.align : align}
+          align={align}
           debug={debug}
-          autoRunSignal={running && runCurrent?.testIndex === i ? autoRunSignal : 0}
-          onRunComplete={() => handleCardRunComplete(i, runCurrent?.align ?? "left")}
           onDomResult={(r) =>
             setDomResults((prev) => {
               const next = [...prev];
@@ -442,6 +530,8 @@ export const PlaygroundTests = () => {
               return next;
             })
           }
+          cardMorphSignal={cardMorphSignals[i]}
+          onComplete={() => cardOnCompletesRef.current[i]?.()}
           cardRef={(el) => {
             cardRefs.current[i] = el;
           }}
@@ -495,21 +585,36 @@ export const PlaygroundTests = () => {
         >
           debug
         </button>
+        {!running && (
+          <button
+            type="button"
+            className={styles.runAllBtn}
+            onClick={() => startBatchRun(SPEEDS[speed])}
+          >
+            Run All
+          </button>
+        )}
         <button
           type="button"
           className={styles.runAllBtn}
           onClick={
             running
               ? () => {
+                  runActive.current = false;
+                  runCardToken.current = null;
+                  if (cardTimeout.current) {
+                    clearTimeout(cardTimeout.current);
+                    cardTimeout.current = null;
+                  }
                   setRunning(false);
-                  setRunCurrent(null);
-                  setRunQueue([]);
-                  if (runAdvanceTimer.current) clearTimeout(runAdvanceTimer.current);
+                  setRunPhase(null);
+                  setRunProgress(null);
+                  clearRunTimers();
                 }
-              : startRunAll
+              : () => startRunAll(SPEEDS[speed])
           }
         >
-          {running ? "Stop" : "Run All"}
+          {running ? "Stop" : "Run Seq"}
         </button>
         {hasRunResults && !showResults && (
           <button

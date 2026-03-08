@@ -108,8 +108,8 @@ export function TestCard({
   onDomResult,
   onJumpResult,
   onPerfResult,
-  autoRunSignal,
-  onRunComplete,
+  onComplete,
+  cardMorphSignal,
   speed,
   easing,
   align: globalAlign,
@@ -126,8 +126,8 @@ export function TestCard({
   onDomResult?: (result: { pass: boolean; detail: string } | null) => void;
   onJumpResult?: (result: { pass: boolean; detail: string } | null) => void;
   onPerfResult?: (result: PerfResult | null) => void;
-  autoRunSignal?: number;
-  onRunComplete?: () => void;
+  onComplete?: () => void;
+  cardMorphSignal?: number;
   speed: Speed;
   easing: EasingKey;
   align: Align;
@@ -141,38 +141,19 @@ export function TestCard({
   const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
   const bodyRef = React.useRef<HTMLDivElement | null>(null);
   const preAnimSnap = React.useRef<JumpSnapshot | null>(null);
+  const pendingJumpResult = React.useRef<{ pass: boolean; detail: string } | null>(null);
   const frameMonitor = React.useRef(new FrameMonitor());
-  const autoRunning = React.useRef(false);
-  const autoRunTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const onRunCompleteRef = React.useRef(onRunComplete);
-  onRunCompleteRef.current = onRunComplete;
-
   const advance = React.useCallback(() => {
     setIndex((i) => (i + 1) % test.values.length);
   }, [test.values.length]);
 
-  // Auto-run: advance once, wait for animation, then signal completion
-  React.useEffect(() => {
-    if (!autoRunSignal) {
-      autoRunning.current = false;
-      if (autoRunTimer.current) clearTimeout(autoRunTimer.current);
-      return;
-    }
-    autoRunning.current = true;
-    // Advance one step
-    setIndex((i) => (i + 1) % test.values.length);
-    // Fallback: if onAnimationComplete doesn't fire within 2s, force-complete
-    autoRunTimer.current = setTimeout(() => {
-      if (autoRunning.current) {
-        autoRunning.current = false;
-        onRunCompleteRef.current?.();
-      }
-    }, 2000);
-  }, [autoRunSignal, test.values.length]);
-
   React.useEffect(() => {
     if (morphAllSignal > 0) advance();
   }, [morphAllSignal, advance]);
+
+  React.useEffect(() => {
+    if (cardMorphSignal && cardMorphSignal > 0) advance();
+  }, [cardMorphSignal, advance]);
 
   React.useEffect(() => {
     if (auto) {
@@ -182,6 +163,12 @@ export function TestCard({
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [auto, advance]);
+
+  // Clean up FrameMonitor RAF on unmount
+  React.useEffect(() => {
+    const monitor = frameMonitor.current;
+    return () => { monitor.stop(); };
+  }, []);
 
   const isSpamTest = test.tags.includes("spam");
   const prevIndex = (index - 1 + test.values.length) % test.values.length;
@@ -226,10 +213,13 @@ export function TestCard({
                 bodyRef.current.querySelector<HTMLElement>("[torph-root]");
               if (torphRoot) {
                 preAnimSnap.current = takeJumpSnapshot(torphRoot);
+                // Capture jump result in next frame but defer the state update
+                // to onAnimationComplete to avoid mid-animation re-renders
                 requestAnimationFrame(() => {
                   if (preAnimSnap.current) {
-                    onJumpResult?.(
-                      verifyNoJump(torphRoot, preAnimSnap.current),
+                    pendingJumpResult.current = verifyNoJump(
+                      torphRoot,
+                      preAnimSnap.current,
                     );
                   }
                 });
@@ -242,6 +232,12 @@ export function TestCard({
               progressRef.current.style.transition = "none";
               progressRef.current.style.width = "0%";
             }
+            // Report jump result now — deferred from onAnimationStart to avoid
+            // triggering a React re-render during the animation
+            if (pendingJumpResult.current !== null) {
+              onJumpResult?.(pendingJumpResult.current);
+              pendingJumpResult.current = null;
+            }
             if (test.verifyDom && bodyRef.current) {
               const torphRoot =
                 bodyRef.current.querySelector<HTMLElement>("[torph-root]");
@@ -249,12 +245,7 @@ export function TestCard({
                 onDomResult?.(test.verifyDom(torphRoot));
               }
             }
-            // Auto-run: single morph done, signal completion
-            if (autoRunning.current) {
-              if (autoRunTimer.current) clearTimeout(autoRunTimer.current);
-              autoRunning.current = false;
-              onRunCompleteRef.current?.();
-            }
+            onComplete?.();
           }}
         >
           {test.values[index]}
