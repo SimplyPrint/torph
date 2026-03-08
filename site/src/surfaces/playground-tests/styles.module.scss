@@ -491,15 +491,147 @@
   text-align: center;
   font-size: 0.65rem;
   color: rgba(255, 255, 255, 0.2);
-  padding: 0.5rem 0;
+  margin: 0.5rem 0;
 
   kbd {
     font-family: monospace;
     font-size: 0.6rem;
     padding: 0.1rem 0.3rem;
     border-radius: 0.2rem;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(255, 255, 255, 0.04);
-    color: rgba(255, 255, 255, 0.35);
+    color: rgba(255, 255, 255, 0.3);
+  }
+}
+
+// ── Run All progress ──
+
+.runProgress {
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.runProgressBar {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 2px;
+  transition: width 200ms ease;
+}
+
+.runAllBtn {
+  composes: button;
+  background: var(--primary);
+  color: #000;
+  font-weight: 600;
+
+  &:hover {
+    opacity: 0.9;
+  }
+}
+
+// ── Results panel ──
+
+.resultsPanel {
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.resultsPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.resultsPanelTitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.resultsPanelClose {
+  all: unset;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.3);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.resultsList {
+  display: flex;
+  flex-direction: column;
+  max-height: 20rem;
+  overflow-y: auto;
+}
+
+.resultsRow {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 1rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: background 100ms ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+}
+
+.resultsRowPass {
+  .resultsStatus {
+    color: rgb(74, 222, 128);
+  }
+
+  .resultsLabel {
+    color: rgba(255, 255, 255, 0.3);
+  }
+}
+
+.resultsRowFail {
+  .resultsStatus {
+    color: rgb(248, 113, 113);
+  }
+
+  .resultsLabel {
+    color: rgba(255, 255, 255, 0.7);
+  }
+}
+
+.resultsStatus {
+  font-weight: 700;
+  font-size: 0.7rem;
+  width: 1rem;
+  text-align: center;
+}
+
+.resultsLabel {
+  flex: 1;
+}
+
+.resultsFailTags {
+  display: flex;
+  gap: 0.25rem;
+
+  span {
+    font-size: 0.6rem;
+    font-weight: 600;
+    padding: 0.1rem 0.375rem;
+    border-radius: 0.25rem;
+    background: rgba(248, 113, 113, 0.15);
+    color: rgb(248, 113, 113);
   }
 }

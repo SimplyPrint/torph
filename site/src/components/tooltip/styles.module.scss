@@ -17,7 +17,9 @@
   font-family: var(--font-secondary);
   font-size: 0.8125rem;
   font-weight: 450;
-  white-space: nowrap;
+  width: 18rem;
+  white-space: normal;
+  text-wrap: pretty;
   pointer-events: none;
   animation: fadeIn 120ms ease;
 

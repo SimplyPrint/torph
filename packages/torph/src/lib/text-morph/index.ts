@@ -130,9 +130,13 @@ export class TextMorph {
 
   private createTextGroup(value: string, element: HTMLElement) {
     // Cancel any pending empty-transition timeout from a previous morph
+    // and restore the styles it would have cleaned up
     if (this.emptyTransitionTimer !== null) {
       clearTimeout(this.emptyTransitionTimer);
       this.emptyTransitionTimer = null;
+      element.style.width = "auto";
+      element.style.height = "auto";
+      element.style.transitionProperty = "";
     }
 
     const oldWidth = element.offsetWidth;

@@ -1,20 +1,23 @@
 import type { Segment } from "./segment";
 import { ATTR_EXITING, ATTR_ID, ATTR_ITEM } from "./constants";
-import { parseTranslate } from "./animate";
 
 export function detachFromFlow(elements: HTMLElement[]) {
-  // Snapshot positions BEFORE removing BRs so layout hasn't shifted yet.
+  // Snapshot visual positions BEFORE removing BRs so layout hasn't shifted.
+  // Use getBoundingClientRect for sub-pixel accuracy that includes all
+  // transforms (translate AND scale) from in-progress animations.
+  const root = elements[0]?.parentElement;
+  const rootRect = root?.getBoundingClientRect();
   const snapshots = new Map<HTMLElement, { left: number; top: number; width: number; height: number; opacity: number }>();
   for (const child of elements) {
     if (child.tagName === "BR") continue;
-    const { tx, ty } = parseTranslate(child);
+    const rect = child.getBoundingClientRect();
     const opacity = Number(getComputedStyle(child).opacity) || 1;
     child.getAnimations().forEach((a) => a.cancel());
     snapshots.set(child, {
-      left: child.offsetLeft + tx,
-      top: child.offsetTop + ty,
-      width: child.offsetWidth,
-      height: child.offsetHeight,
+      left: rootRect ? rect.left - rootRect.left : child.offsetLeft,
+      top: rootRect ? rect.top - rootRect.top : child.offsetTop,
+      width: rect.width,
+      height: rect.height,
       opacity,
     });
   }
