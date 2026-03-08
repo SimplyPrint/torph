@@ -1983,9 +1983,10 @@ export const PlaygroundTests = () => {
               const diffStr = diff > 0 ? `+${diff}` : `${diff}`;
               return (
                 <Tooltip
+                  key={entry.name}
                   content={`${entry.name}: ${(entry.raw / 1024).toFixed(1)}kB raw · published: ${(entry.publishedGzip / 1024).toFixed(1)}kB gz`}
                 >
-                  <span key={entry.name} className={styles.bundleEntry}>
+                  <span className={styles.bundleEntry}>
                     {entry.name}{" "}
                     <strong>{(entry.gzip / 1024).toFixed(1)}kB</strong>
                     {diff !== 0 && (
@@ -2114,9 +2115,8 @@ export const PlaygroundTests = () => {
         </div>
         <div className={styles.speedToggle}>
           {ALIGNS.map((a) => (
-            <Tooltip content={`Align ${a}`}>
+            <Tooltip key={a} content={`Align ${a}`}>
               <button
-                key={a}
                 type="button"
                 className={`${styles.speedBtn} ${align === a ? styles.speedBtnActive : ""}`}
                 onClick={() => setAlign(a)}
