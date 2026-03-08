@@ -272,12 +272,13 @@
 
 .cardBody {
   padding: 3rem 1.25rem;
-  text-align: center;
+  text-align: left;
   font-family: var(--font-secondary);
   font-size: 1.5rem;
   font-weight: 500;
   line-height: 1.5;
   color: #ffffff;
+  user-select: none;
 }
 
 .cardFooter {
@@ -469,6 +470,20 @@
   &::placeholder {
     color: rgba(255, 255, 255, 0.2);
   }
+}
+
+.toolbar {
+  position: sticky;
+  bottom: 1rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  background: var(--body-light);
+  backdrop-filter: blur(12px);
 }
 
 .keyboardHint {

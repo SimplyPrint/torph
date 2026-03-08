@@ -113,20 +113,25 @@ export function animateEnterOrPersist(
   }
 }
 
-let pendingCleanup: (() => void) | null = null;
+const pendingCleanups = new WeakMap<HTMLElement, () => void>();
 
 export function transitionContainerSize(
   element: HTMLElement,
   oldWidth: number,
   oldHeight: number,
   duration: number,
+  ease: string,
   onComplete?: () => void,
 ) {
-  // Cancel any pending cleanup from a previous transition
-  if (pendingCleanup) {
-    pendingCleanup();
-    pendingCleanup = null;
+  // Cancel any pending cleanup from a previous transition on this element
+  const prev = pendingCleanups.get(element);
+  if (prev) {
+    prev();
+    pendingCleanups.delete(element);
   }
+
+  // Disable CSS transitions — we use WAAPI for exact sync with item animations
+  element.style.transitionProperty = "none";
 
   if (oldWidth === 0 || oldHeight === 0) {
     element.style.width = "auto";
@@ -141,33 +146,28 @@ export function transitionContainerSize(
   const newWidth = element.offsetWidth;
   const newHeight = element.offsetHeight;
 
-  element.style.width = `${oldWidth}px`;
-  element.style.height = `${oldHeight}px`;
-  void element.offsetWidth;
-
-  element.style.width = `${newWidth}px`;
-  element.style.height = `${newHeight}px`;
+  // Use WAAPI to animate width/height in perfect sync with item transforms
+  const anim = element.animate(
+    [
+      { width: `${oldWidth}px`, height: `${oldHeight}px` },
+      { width: `${newWidth}px`, height: `${newHeight}px` },
+    ],
+    { duration, easing: ease, fill: "both" },
+  );
 
   function cleanup() {
-    element.removeEventListener("transitionend", onEnd);
-    clearTimeout(fallbackTimer);
-    pendingCleanup = null;
+    anim.cancel();
+    pendingCleanups.delete(element);
     element.style.width = "auto";
     element.style.height = "auto";
+    element.style.transitionProperty = "";
     onComplete?.();
   }
 
-  function onEnd(e: TransitionEvent) {
-    if (e.target !== element) return;
-    if (e.propertyName !== "width" && e.propertyName !== "height") return;
-    cleanup();
-  }
+  anim.onfinish = cleanup;
 
-  element.addEventListener("transitionend", onEnd);
-  const fallbackTimer = setTimeout(cleanup, duration + 50);
-  pendingCleanup = () => {
-    element.removeEventListener("transitionend", onEnd);
-    clearTimeout(fallbackTimer);
-    pendingCleanup = null;
-  };
+  pendingCleanups.set(element, () => {
+    anim.cancel();
+    pendingCleanups.delete(element);
+  });
 }

@@ -78,9 +78,6 @@ export class TextMorph {
 
     if (!this.isDisabled()) {
       this.element.setAttribute(ATTR_ROOT, "");
-      this.element.style.transitionDuration = `${this.options.duration}ms`;
-      this.element.style.transitionTimingFunction = this.options.ease!;
-
       if (options.debug) this.element.setAttribute(ATTR_DEBUG, "");
     }
 
@@ -176,7 +173,16 @@ export class TextMorph {
     reconcileChildren(element, oldChildren, newIds, segments);
 
     this.currentMeasures = measure(this.element);
-    this.updateStyles(segments);
+
+    // Measure at oldWidth to get actual first-frame positions.
+    // This correctly handles text-align when content overflows the container
+    // (text-align has no effect on overflowing content).
+    element.style.width = `${oldWidth}px`;
+    void element.offsetWidth;
+    const firstFrameMeasures = measure(this.element);
+    element.style.width = "auto";
+
+    this.updateStyles(segments, firstFrameMeasures);
 
     exiting.forEach((child) => {
       if (this.isInitialRender || child.getAttribute(ATTR_ID) === "empty") {
@@ -225,12 +231,13 @@ export class TextMorph {
         oldWidth,
         oldHeight,
         this.options.duration!,
+        this.options.ease!,
         this.options.onAnimationComplete,
       );
     }
   }
 
-  private updateStyles(segments: Segment[]) {
+  private updateStyles(segments: Segment[], firstFrameMeasures: Measures) {
     if (this.isInitialRender) return;
 
     const children = Array.from(this.element.children) as HTMLElement[];
@@ -256,7 +263,7 @@ export class TextMorph {
         : key;
 
       const { dx: deltaX, dy: deltaY } = deltaKey
-        ? computeDelta(this.prevMeasures, this.currentMeasures, deltaKey)
+        ? computeDelta(this.prevMeasures, firstFrameMeasures, deltaKey)
         : { dx: 0, dy: 0 };
 
       animateEnterOrPersist(child, {

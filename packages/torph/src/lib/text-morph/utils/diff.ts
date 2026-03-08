@@ -97,16 +97,16 @@ export function diffSegments(
 
   // Split new text into words and track separators (space vs newline)
   const newWordStrings: string[] = [];
-  const newSeparators: string[] = []; // separator BEFORE each word (index 0 is empty)
+  const newSeparators: string[][] = []; // separators BEFORE each word (index 0 is empty)
   const parts = newText.split(/( |\n)/);
-  let lastSep = "";
+  let pendingSeps: string[] = [];
   for (const part of parts) {
     if (part === " " || part === "\n") {
-      lastSep = part;
+      pendingSeps.push(part);
     } else if (part.length > 0) {
-      newSeparators.push(lastSep);
+      newSeparators.push(pendingSeps);
       newWordStrings.push(part);
-      lastSep = "";
+      pendingSeps = [];
     }
   }
 
@@ -188,19 +188,21 @@ export function diffSegments(
 
   for (let ni = 0; ni < newWordStrings.length; ni++) {
     if (ni > 0) {
-      const sep = newSeparators[ni] || " ";
-      if (sep === "\n") {
-        segments.push({
-          id: `newline-${charOffset}`,
-          string: "\n",
-        });
-      } else {
-        segments.push({
-          id: `space-${charOffset}`,
-          string: "\u00A0",
-        });
+      const seps = newSeparators[ni] || [" "];
+      for (const sep of seps) {
+        if (sep === "\n") {
+          segments.push({
+            id: `newline-${charOffset}`,
+            string: "\n",
+          });
+        } else {
+          segments.push({
+            id: `space-${charOffset}`,
+            string: "\u00A0",
+          });
+        }
+        charOffset++;
       }
-      charOffset++;
     }
 
     if (newToOldWord.has(ni)) {
