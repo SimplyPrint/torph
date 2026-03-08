@@ -1491,14 +1491,17 @@ function copyResultsToClipboard(
   const lines = [
     "# Torph Test Results",
     "",
-    `| Test | Data | DOM | Jump | Jump Detail | Time |`,
-    `|------|------|-----|------|-------------|------|`,
+    `| Test | Data | DOM | DOM Detail | Jump | Jump Detail | Time |`,
+    `|------|------|-----|------------|------|-------------|------|`,
     ...results.map((r, i) => {
       const status = !r.result ? "Skip" : r.result.pass ? "Pass" : "Fail";
       const dom = domResults[i]
         ? domResults[i]!.pass
           ? "Pass"
           : "Fail"
+        : "-";
+      const domDetail = domResults[i]
+        ? domResults[i]!.detail
         : "-";
       const jump = jumpResults[i]
         ? jumpResults[i]!.pass
@@ -1509,7 +1512,7 @@ function copyResultsToClipboard(
         ? jumpResults[i]!.detail
         : "-";
       const time = r.timeMs !== null ? `${r.timeMs.toFixed(2)}ms` : "-";
-      return `| ${r.label} | ${status} | ${dom} | ${jump} | ${jumpDetail} | ${time} |`;
+      return `| ${r.label} | ${status} | ${dom} | ${domDetail} | ${jump} | ${jumpDetail} | ${time} |`;
     }),
     "",
     `Generated: ${new Date().toISOString()}`,

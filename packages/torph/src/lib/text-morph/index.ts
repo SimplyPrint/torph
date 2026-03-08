@@ -53,6 +53,7 @@ export class TextMorph {
   private previousSegments: Segment[] = [];
   private isInitialRender = true;
   private reducedMotion: ReducedMotionState | null = null;
+  private emptyTransitionTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: TextMorphOptions) {
     const { ease: rawEase, ...rest } = { ...DEFAULT_TEXT_MORPH_OPTIONS, ...options };
@@ -88,6 +89,10 @@ export class TextMorph {
   }
 
   destroy() {
+    if (this.emptyTransitionTimer !== null) {
+      clearTimeout(this.emptyTransitionTimer);
+      this.emptyTransitionTimer = null;
+    }
     this.reducedMotion?.destroy();
     this.element.getAnimations().forEach((anim) => anim.cancel());
     this.element.removeAttribute(ATTR_ROOT);
@@ -124,6 +129,12 @@ export class TextMorph {
   }
 
   private createTextGroup(value: string, element: HTMLElement) {
+    // Cancel any pending empty-transition timeout from a previous morph
+    if (this.emptyTransitionTimer !== null) {
+      clearTimeout(this.emptyTransitionTimer);
+      this.emptyTransitionTimer = null;
+    }
+
     const oldWidth = element.offsetWidth;
     const oldHeight = element.offsetHeight;
 
@@ -219,7 +230,8 @@ export class TextMorph {
       element.style.transitionProperty = "none";
       element.style.width = `${oldWidth}px`;
       element.style.height = `${oldHeight}px`;
-      setTimeout(() => {
+      this.emptyTransitionTimer = setTimeout(() => {
+        this.emptyTransitionTimer = null;
         element.style.width = "auto";
         element.style.height = "auto";
         element.style.transitionProperty = "";
