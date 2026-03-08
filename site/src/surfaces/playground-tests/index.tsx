@@ -144,9 +144,14 @@ function combineResults(...results: { pass: boolean; detail: string }[]) {
 
 // ── DOM verification helpers ──
 
-function verifyItemsInBounds(root: HTMLElement): { pass: boolean; detail: string } {
+function verifyItemsInBounds(root: HTMLElement): {
+  pass: boolean;
+  detail: string;
+} {
   const rootRect = root.getBoundingClientRect();
-  const items = root.querySelectorAll<HTMLElement>("[torph-item]:not([torph-exiting])");
+  const items = root.querySelectorAll<HTMLElement>(
+    "[torph-item]:not([torph-exiting])",
+  );
   const oob: string[] = [];
   items.forEach((item) => {
     if (item.tagName === "BR") return;
@@ -167,7 +172,10 @@ function verifyItemsInBounds(root: HTMLElement): { pass: boolean; detail: string
   return { pass: true, detail: "all items within bounds" };
 }
 
-function verifyNoOverflow(root: HTMLElement): { pass: boolean; detail: string } {
+function verifyNoOverflow(root: HTMLElement): {
+  pass: boolean;
+  detail: string;
+} {
   const tolerance = 2;
   const overflowW = root.scrollWidth - root.offsetWidth > tolerance;
   const overflowH = root.scrollHeight - root.offsetHeight > tolerance;
@@ -180,7 +188,10 @@ function verifyNoOverflow(root: HTMLElement): { pass: boolean; detail: string } 
   return { pass: true, detail: "no overflow" };
 }
 
-function verifyExitCleanup(root: HTMLElement): { pass: boolean; detail: string } {
+function verifyExitCleanup(root: HTMLElement): {
+  pass: boolean;
+  detail: string;
+} {
   const exiting = root.querySelectorAll("[torph-exiting]");
   if (exiting.length > 0) {
     return { pass: false, detail: `${exiting.length} exiting elements remain` };
@@ -206,17 +217,23 @@ function verifyAlignment(
 
     if (align === "left") {
       if (Math.abs(lineLeft - rootRect.left) > tolerance) {
-        failures.push(`line ${i + 1} not left-aligned (gap=${(lineLeft - rootRect.left).toFixed(1)}px)`);
+        failures.push(
+          `line ${i + 1} not left-aligned (gap=${(lineLeft - rootRect.left).toFixed(1)}px)`,
+        );
       }
     } else if (align === "right") {
       if (Math.abs(lineRight - rootRect.right) > tolerance) {
-        failures.push(`line ${i + 1} not right-aligned (gap=${(rootRect.right - lineRight).toFixed(1)}px)`);
+        failures.push(
+          `line ${i + 1} not right-aligned (gap=${(rootRect.right - lineRight).toFixed(1)}px)`,
+        );
       }
     } else if (align === "center") {
       const lineMid = (lineLeft + lineRight) / 2;
       const rootMid = (rootRect.left + rootRect.right) / 2;
       if (Math.abs(lineMid - rootMid) > tolerance) {
-        failures.push(`line ${i + 1} not centered (off=${(lineMid - rootMid).toFixed(1)}px)`);
+        failures.push(
+          `line ${i + 1} not centered (off=${(lineMid - rootMid).toFixed(1)}px)`,
+        );
       }
     }
   }
@@ -226,7 +243,9 @@ function verifyAlignment(
 }
 
 function getVisualLines(root: HTMLElement): DOMRect[][] {
-  const items = root.querySelectorAll<HTMLElement>("[torph-item]:not([torph-exiting]):not(br)");
+  const items = root.querySelectorAll<HTMLElement>(
+    "[torph-item]:not([torph-exiting]):not(br)",
+  );
   if (items.length === 0) return [];
 
   const lines: DOMRect[][] = [];
@@ -247,7 +266,10 @@ function getVisualLines(root: HTMLElement): DOMRect[][] {
   return lines;
 }
 
-function verifyMultiline(root: HTMLElement, expectedMinLines: number): { pass: boolean; detail: string } {
+function verifyMultiline(
+  root: HTMLElement,
+  expectedMinLines: number,
+): { pass: boolean; detail: string } {
   const lines = getVisualLines(root);
   if (lines.length < expectedMinLines) {
     return {
@@ -265,14 +287,22 @@ function isIdentityOrNone(transform: string): boolean {
   if (!match) return false;
   const v = match[1]!.split(",").map((s) => parseFloat(s.trim()));
   return (
-    Math.abs(v[0]! - 1) < 0.01 && Math.abs(v[1]!) < 0.01 &&
-    Math.abs(v[2]!) < 0.01 && Math.abs(v[3]! - 1) < 0.01 &&
-    Math.abs(v[4]!) < 1 && Math.abs(v[5]!) < 1
+    Math.abs(v[0]! - 1) < 0.01 &&
+    Math.abs(v[1]!) < 0.01 &&
+    Math.abs(v[2]!) < 0.01 &&
+    Math.abs(v[3]! - 1) < 0.01 &&
+    Math.abs(v[4]!) < 1 &&
+    Math.abs(v[5]!) < 1
   );
 }
 
-function verifyNoTransformResidue(root: HTMLElement): { pass: boolean; detail: string } {
-  const items = root.querySelectorAll<HTMLElement>("[torph-item]:not([torph-exiting]):not(br)");
+function verifyNoTransformResidue(root: HTMLElement): {
+  pass: boolean;
+  detail: string;
+} {
+  const items = root.querySelectorAll<HTMLElement>(
+    "[torph-item]:not([torph-exiting]):not(br)",
+  );
   const stuck: string[] = [];
   items.forEach((item) => {
     const t = getComputedStyle(item).transform;
@@ -284,39 +314,60 @@ function verifyNoTransformResidue(root: HTMLElement): { pass: boolean; detail: s
   return { pass: true, detail: "no transform residue" };
 }
 
-function verifyNoOpacityResidue(root: HTMLElement): { pass: boolean; detail: string } {
-  const items = root.querySelectorAll<HTMLElement>("[torph-item]:not([torph-exiting]):not(br)");
+function verifyNoOpacityResidue(root: HTMLElement): {
+  pass: boolean;
+  detail: string;
+} {
+  const items = root.querySelectorAll<HTMLElement>(
+    "[torph-item]:not([torph-exiting]):not(br)",
+  );
   const stuck: string[] = [];
   items.forEach((item) => {
     const o = Number(getComputedStyle(item).opacity);
     if (o < 0.99) {
-      stuck.push(`"${item.textContent?.trim() || "?"}" opacity=${o.toFixed(2)}`);
+      stuck.push(
+        `"${item.textContent?.trim() || "?"}" opacity=${o.toFixed(2)}`,
+      );
     }
   });
   if (stuck.length > 0) return { pass: false, detail: stuck.join(", ") };
   return { pass: true, detail: "no opacity residue" };
 }
 
-function verifyStyleCleanup(root: HTMLElement): { pass: boolean; detail: string } {
-  const items = root.querySelectorAll<HTMLElement>("[torph-item]:not([torph-exiting]):not(br)");
+function verifyStyleCleanup(root: HTMLElement): {
+  pass: boolean;
+  detail: string;
+} {
+  const items = root.querySelectorAll<HTMLElement>(
+    "[torph-item]:not([torph-exiting]):not(br)",
+  );
   const issues: string[] = [];
   items.forEach((item) => {
     if (item.style.position === "absolute") {
       issues.push(`"${item.textContent?.trim() || "?"}" has position:absolute`);
     }
     if (item.style.width && item.style.width !== "auto") {
-      issues.push(`"${item.textContent?.trim() || "?"}" has width:${item.style.width}`);
+      issues.push(
+        `"${item.textContent?.trim() || "?"}" has width:${item.style.width}`,
+      );
     }
     if (item.style.height && item.style.height !== "auto") {
-      issues.push(`"${item.textContent?.trim() || "?"}" has height:${item.style.height}`);
+      issues.push(
+        `"${item.textContent?.trim() || "?"}" has height:${item.style.height}`,
+      );
     }
   });
   if (issues.length > 0) return { pass: false, detail: issues.join(", ") };
   return { pass: true, detail: "no stale inline styles" };
 }
 
-function verifyNoDuplicateIds(root: HTMLElement): { pass: boolean; detail: string } {
-  const items = root.querySelectorAll<HTMLElement>("[torph-item]:not([torph-exiting])");
+function verifyNoDuplicateIds(root: HTMLElement): {
+  pass: boolean;
+  detail: string;
+} {
+  const items = root.querySelectorAll<HTMLElement>(
+    "[torph-item]:not([torph-exiting])",
+  );
   const seen = new Map<string, number>();
   items.forEach((item) => {
     const id = item.getAttribute("torph-id");
@@ -332,13 +383,18 @@ function verifyNoDuplicateIds(root: HTMLElement): { pass: boolean; detail: strin
   return { pass: true, detail: "no duplicate IDs" };
 }
 
-function verifyContainerSizeMatch(root: HTMLElement): { pass: boolean; detail: string } {
+function verifyContainerSizeMatch(root: HTMLElement): {
+  pass: boolean;
+  detail: string;
+} {
   const tolerance = 2;
   const hasStaleWidth =
-    root.style.width && root.style.width !== "auto" &&
+    root.style.width &&
+    root.style.width !== "auto" &&
     Math.abs(parseFloat(root.style.width) - root.scrollWidth) > tolerance;
   const hasStaleHeight =
-    root.style.height && root.style.height !== "auto" &&
+    root.style.height &&
+    root.style.height !== "auto" &&
     Math.abs(parseFloat(root.style.height) - root.scrollHeight) > tolerance;
   if (hasStaleWidth || hasStaleHeight) {
     return {
@@ -349,7 +405,10 @@ function verifyContainerSizeMatch(root: HTMLElement): { pass: boolean; detail: s
   return { pass: true, detail: "container size matches content" };
 }
 
-function verifyBrMatchesContent(root: HTMLElement): { pass: boolean; detail: string } {
+function verifyBrMatchesContent(root: HTMLElement): {
+  pass: boolean;
+  detail: string;
+} {
   const lines = getVisualLines(root);
   const brs = root.querySelectorAll("br[torph-item]");
   // BRs should be >= lines - 1 (consecutive newlines create blank lines with no text items)
@@ -484,7 +543,8 @@ class FrameMonitor {
 
     const frameTimes = this.frames;
     // Time from start() to first rAF = sync morph work + first paint
-    const morphTime = this.firstFrameTime > 0 ? this.firstFrameTime - this.startTime : 0;
+    const morphTime =
+      this.firstFrameTime > 0 ? this.firstFrameTime - this.startTime : 0;
 
     if (frameTimes.length === 0) {
       return {
@@ -500,8 +560,12 @@ class FrameMonitor {
 
     const longestFrame = Math.max(...frameTimes);
     const avgFrame = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
-    // A "dropped" frame is one where the gap exceeds 1.5x of a 60fps frame (25ms)
-    const dropThreshold = 25;
+    // Detect display refresh rate from median frame interval,
+    // then flag frames that exceed 2x median (missed a full frame).
+    // Min threshold of 34ms avoids false positives on 30Hz displays.
+    const sorted = [...frameTimes].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)] || 16.67;
+    const dropThreshold = Math.max(median * 2, 34);
     const droppedFrames = frameTimes.filter((t) => t > dropThreshold).length;
     const totalFrames = frameTimes.length;
 
@@ -516,12 +580,21 @@ class FrameMonitor {
       issues.push(`morph: ${morphTime.toFixed(1)}ms`);
     }
 
-    const pass = droppedFrames === 0 && longestFrame <= 50;
+    const hz = Math.round(1000 / median);
+    const pass = droppedFrames === 0 && longestFrame <= dropThreshold;
     const detail = pass
-      ? `${totalFrames}f avg=${avgFrame.toFixed(1)}ms worst=${longestFrame.toFixed(1)}ms morph=${morphTime.toFixed(1)}ms`
-      : `${totalFrames}f ${issues.join(" | ")} avg=${avgFrame.toFixed(1)}ms morph=${morphTime.toFixed(1)}ms`;
+      ? `${totalFrames}f@${hz}Hz avg=${avgFrame.toFixed(1)}ms worst=${longestFrame.toFixed(1)}ms morph=${morphTime.toFixed(1)}ms`
+      : `${totalFrames}f@${hz}Hz ${issues.join(" | ")} avg=${avgFrame.toFixed(1)}ms morph=${morphTime.toFixed(1)}ms`;
 
-    return { pass, detail, totalFrames, droppedFrames, longestFrame, avgFrame, morphTime };
+    return {
+      pass,
+      detail,
+      totalFrames,
+      droppedFrames,
+      longestFrame,
+      avgFrame,
+      morphTime,
+    };
   }
 
   private tick = () => {
@@ -537,7 +610,10 @@ class FrameMonitor {
   };
 }
 
-function verifyDomStandard(root: HTMLElement): { pass: boolean; detail: string } {
+function verifyDomStandard(root: HTMLElement): {
+  pass: boolean;
+  detail: string;
+} {
   const checks: [string, { pass: boolean; detail: string }][] = [
     ["bounds", verifyItemsInBounds(root)],
     ["overflow", verifyNoOverflow(root)],
@@ -549,9 +625,17 @@ function verifyDomStandard(root: HTMLElement): { pass: boolean; detail: string }
     ["size", verifyContainerSizeMatch(root)],
   ];
 
-  const align = getComputedStyle(root).textAlign as "left" | "center" | "right" | "start";
+  const align = getComputedStyle(root).textAlign as
+    | "left"
+    | "center"
+    | "right"
+    | "start";
   const normalizedAlign = align === "start" ? "left" : align;
-  if (normalizedAlign === "left" || normalizedAlign === "center" || normalizedAlign === "right") {
+  if (
+    normalizedAlign === "left" ||
+    normalizedAlign === "center" ||
+    normalizedAlign === "right"
+  ) {
     checks.push(["align", verifyAlignment(root, normalizedAlign)]);
   }
 
@@ -752,8 +836,7 @@ const TESTS: TestCase[] = [
   },
   {
     label: "Single character change",
-    description:
-      '"c", "a", "r" persist. "t" exits and "d" enters.',
+    description: '"c", "a", "r" persist. "t" exits and "d" enters.',
     tags: ["char morph"],
     values: ["cart", "card"],
     verify: () => verifyGraphemeMorph("cart", "card", ["c", "a", "r"]),
@@ -765,8 +848,7 @@ const TESTS: TestCase[] = [
       "Same words, different casing. Char morph handles the letter-level changes.",
     tags: ["char morph"],
     values: ["Hello World", "hello world"],
-    verify: () =>
-      verifyCharMorph("Hello World", "hello world", "Hello"),
+    verify: () => verifyCharMorph("Hello World", "hello world", "Hello"),
     verifyDom: (root) => verifyDomStandard(root),
   },
   {
@@ -833,8 +915,7 @@ const TESTS: TestCase[] = [
   },
   {
     label: "Multiline add line",
-    description:
-      "Adding a new line enters new words. Existing words persist.",
+    description: "Adding a new line enters new words. Existing words persist.",
     tags: ["multiline", "enter"],
     values: ["hello world\ngoodbye", "hello world\ngoodbye\nfarewell"],
     verify: () =>
@@ -855,8 +936,7 @@ const TESTS: TestCase[] = [
   },
   {
     label: "Multiline remove line",
-    description:
-      "Removing a line exits those words. Remaining words persist.",
+    description: "Removing a line exits those words. Remaining words persist.",
     tags: ["multiline", "exit"],
     values: ["hello world\nfoo bar\ngoodbye moon", "hello world\ngoodbye moon"],
     verify: () =>
@@ -949,8 +1029,7 @@ const TESTS: TestCase[] = [
   },
   {
     label: "Empty lines",
-    description:
-      "Collapsing a blank line. Words on remaining lines persist.",
+    description: "Collapsing a blank line. Words on remaining lines persist.",
     tags: ["multiline", "edge case"],
     values: ["hello\n\nworld", "hello\nworld"],
     verify: () =>
@@ -1089,8 +1168,7 @@ const TESTS: TestCase[] = [
   // ── Stress & stability ──
   {
     label: "Long sentence overlap",
-    description:
-      '"quick", "fox", "over" persist. Other words swap in/out.',
+    description: '"quick", "fox", "over" persist. Other words swap in/out.',
     tags: ["stress", "flip"],
     values: [
       "the quick brown fox jumps over the lazy dog",
@@ -1231,7 +1309,9 @@ function SegmentInspector({ from, to }: { from: string; to: string }) {
           {newSegs.map((s, i) => {
             const persisted = oldSegs.some((o) => o.id === s.id);
             return (
-              <Tooltip content={`ID: ${s.id}${persisted ? " (persisted)" : " (new)"}`}>
+              <Tooltip
+                content={`ID: ${s.id}${persisted ? " (persisted)" : " (new)"}`}
+              >
                 <span
                   key={i}
                   className={`${styles.segmentChip} ${persisted ? styles.segmentPersisted : styles.segmentNew}`}
@@ -1250,10 +1330,7 @@ function SegmentInspector({ from, to }: { from: string; to: string }) {
           <div className={styles.segmentList}>
             {[...splits.entries()].map(([word, chars]) => (
               <Tooltip content={`"${word}" split into ${chars.length} chars`}>
-                <span
-                  key={word}
-                  className={styles.segmentChip}
-                >
+                <span key={word} className={styles.segmentChip}>
                   {word} → {chars.map((c) => c.string).join("")}
                 </span>
               </Tooltip>
@@ -1356,13 +1433,31 @@ function TestCard({
       <p className={styles.verifyDetail}>
         {result ? result.detail : "\u00A0"}
         {domResult && !domResult.pass && (
-          <> · <span style={{ color: "rgb(248, 113, 113)" }}>DOM: {domResult.detail}</span></>
+          <>
+            {" "}
+            ·{" "}
+            <span style={{ color: "rgb(248, 113, 113)" }}>
+              DOM: {domResult.detail}
+            </span>
+          </>
         )}
         {jumpResult && !jumpResult.pass && (
-          <> · <span style={{ color: "rgb(251, 191, 36)" }}>JUMP: {jumpResult.detail}</span></>
+          <>
+            {" "}
+            ·{" "}
+            <span style={{ color: "rgb(251, 191, 36)" }}>
+              JUMP: {jumpResult.detail}
+            </span>
+          </>
         )}
         {perfResult && !perfResult.pass && (
-          <> · <span style={{ color: "rgb(251, 146, 60)" }}>PERF: {perfResult.detail}</span></>
+          <>
+            {" "}
+            ·{" "}
+            <span style={{ color: "rgb(251, 146, 60)" }}>
+              PERF: {perfResult.detail}
+            </span>
+          </>
         )}
       </p>
       <div
@@ -1387,12 +1482,15 @@ function TestCard({
             }
             // Snapshot positions before morph for jump detection
             if (bodyRef.current) {
-              const torphRoot = bodyRef.current.querySelector<HTMLElement>("[torph-root]");
+              const torphRoot =
+                bodyRef.current.querySelector<HTMLElement>("[torph-root]");
               if (torphRoot) {
                 preAnimSnap.current = takeJumpSnapshot(torphRoot);
                 requestAnimationFrame(() => {
                   if (preAnimSnap.current) {
-                    onJumpResult?.(verifyNoJump(torphRoot, preAnimSnap.current));
+                    onJumpResult?.(
+                      verifyNoJump(torphRoot, preAnimSnap.current),
+                    );
                   }
                 });
               }
@@ -1405,7 +1503,8 @@ function TestCard({
               progressRef.current.style.width = "0%";
             }
             if (test.verifyDom && bodyRef.current) {
-              const torphRoot = bodyRef.current.querySelector<HTMLElement>("[torph-root]");
+              const torphRoot =
+                bodyRef.current.querySelector<HTMLElement>("[torph-root]");
               if (torphRoot) {
                 onDomResult?.(test.verifyDom(torphRoot));
               }
@@ -1418,7 +1517,13 @@ function TestCard({
       <div className={styles.cardFooter}>
         <Tooltip content={result?.detail ?? ""}>
           <span
-            className={result ? (result.pass ? styles.badgePass : styles.badgeFail) : styles.perfBadge}
+            className={
+              result
+                ? result.pass
+                  ? styles.badgePass
+                  : styles.badgeFail
+                : styles.perfBadge
+            }
           >
             <TextMorph as="span" duration={150}>
               {result ? (result.pass ? "PASS" : "FAIL") : "…"}
@@ -1428,26 +1533,48 @@ function TestCard({
         {test.verifyDom && (
           <Tooltip content={domResult?.detail ?? ""}>
             <span
-              className={domResult ? (domResult.pass ? styles.badgePass : styles.badgeFail) : styles.perfBadge}
+              className={
+                domResult
+                  ? domResult.pass
+                    ? styles.badgePass
+                    : styles.badgeFail
+                  : styles.perfBadge
+              }
             >
               <TextMorph as="span" duration={150}>
-                {domResult ? `DOM ${domResult.pass ? "PASS" : "FAIL"}` : "DOM …"}
+                {domResult
+                  ? `DOM ${domResult.pass ? "PASS" : "FAIL"}`
+                  : "DOM …"}
               </TextMorph>
             </span>
           </Tooltip>
         )}
         <Tooltip content={jumpResult?.detail ?? ""}>
           <span
-            className={jumpResult ? (jumpResult.pass ? styles.badgePass : styles.badgeFail) : styles.perfBadge}
+            className={
+              jumpResult
+                ? jumpResult.pass
+                  ? styles.badgePass
+                  : styles.badgeFail
+                : styles.perfBadge
+            }
           >
             <TextMorph as="span" duration={150}>
-              {jumpResult ? `JUMP ${jumpResult.pass ? "OK" : "FAIL"}` : "JUMP …"}
+              {jumpResult
+                ? `JUMP ${jumpResult.pass ? "OK" : "FAIL"}`
+                : "JUMP …"}
             </TextMorph>
           </span>
         </Tooltip>
         <Tooltip content={perfResult?.detail ?? ""}>
           <span
-            className={perfResult ? (perfResult.pass ? styles.badgePass : styles.badgeFail) : styles.perfBadge}
+            className={
+              perfResult
+                ? perfResult.pass
+                  ? styles.badgePass
+                  : styles.badgeFail
+                : styles.perfBadge
+            }
           >
             <TextMorph as="span" duration={150}>
               {perfResult
@@ -1461,7 +1588,9 @@ function TestCard({
         <Tooltip content={timeMs !== null ? "Avg over 100 iterations" : ""}>
           <span className={styles.perfBadge}>
             <TextMorph as="span" duration={150}>
-              {timeMs !== null ? `${timeMs < 0.01 ? "<0.01" : timeMs.toFixed(2)}ms` : "—"}
+              {timeMs !== null
+                ? `${timeMs < 0.01 ? "<0.01" : timeMs.toFixed(2)}ms`
+                : "—"}
             </TextMorph>
           </span>
         </Tooltip>
@@ -1480,36 +1609,38 @@ function TestCard({
           <button type="button" onClick={advance} className={styles.button}>
             Morph
           </button>
-          <Tooltip content={showInspector ? "Hide inspector" : "Show inspector"}>
+          <Tooltip
+            content={showInspector ? "Hide inspector" : "Show inspector"}
+          >
             <button
               type="button"
               className={`${styles.iconBtn} ${showInspector ? styles.iconBtnActive : ""}`}
               onClick={() => setShowInspector((s) => !s)}
             >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              {showInspector ? (
-                <>
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-                  <line x1="1" y1="1" x2="23" y2="23" />
-                </>
-              ) : (
-                <>
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </>
-              )}
-            </svg>
-          </button>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                {showInspector ? (
+                  <>
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </>
+                ) : (
+                  <>
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </>
+                )}
+              </svg>
+            </button>
           </Tooltip>
         </div>
       </div>
@@ -1609,8 +1740,8 @@ function SandboxCard() {
 
 function copyResultsToClipboard(
   results: TestResult[],
-  domResults: (({ pass: boolean; detail: string }) | null)[],
-  jumpResults: (({ pass: boolean; detail: string }) | null)[],
+  domResults: ({ pass: boolean; detail: string } | null)[],
+  jumpResults: ({ pass: boolean; detail: string } | null)[],
   perfResults: (PerfResult | null)[],
 ) {
   const lines = [
@@ -1620,30 +1751,20 @@ function copyResultsToClipboard(
     `|------|------|-----|------------|------|-------------|------|-------------|------|`,
     ...results.map((r, i) => {
       const status = !r.result ? "Skip" : r.result.pass ? "Pass" : "Fail";
-      const dom = domResults[i]
-        ? domResults[i]!.pass
-          ? "Pass"
-          : "Fail"
-        : "-";
-      const domDetail = domResults[i]
-        ? domResults[i]!.detail
-        : "-";
+      const dom = domResults[i] ? (domResults[i]!.pass ? "Pass" : "Fail") : "-";
+      const domDetail = domResults[i] ? domResults[i]!.detail : "-";
       const jump = jumpResults[i]
         ? jumpResults[i]!.pass
           ? "Pass"
           : "Fail"
         : "-";
-      const jumpDetail = jumpResults[i]
-        ? jumpResults[i]!.detail
-        : "-";
+      const jumpDetail = jumpResults[i] ? jumpResults[i]!.detail : "-";
       const perf = perfResults[i]
         ? perfResults[i]!.pass
           ? "Pass"
           : "Fail"
         : "-";
-      const perfDetail = perfResults[i]
-        ? perfResults[i]!.detail
-        : "-";
+      const perfDetail = perfResults[i] ? perfResults[i]!.detail : "-";
       const time = r.timeMs !== null ? `${r.timeMs.toFixed(2)}ms` : "-";
       return `| ${r.label} | ${status} | ${dom} | ${domDetail} | ${jump} | ${jumpDetail} | ${perf} | ${perfDetail} | ${time} |`;
     }),
@@ -1655,8 +1776,8 @@ function copyResultsToClipboard(
 
 function copyFailsToClipboard(
   results: TestResult[],
-  domResults: (({ pass: boolean; detail: string }) | null)[],
-  jumpResults: (({ pass: boolean; detail: string }) | null)[],
+  domResults: ({ pass: boolean; detail: string } | null)[],
+  jumpResults: ({ pass: boolean; detail: string } | null)[],
   perfResults: (PerfResult | null)[],
 ) {
   const failed = results
@@ -1683,9 +1804,17 @@ function copyFailsToClipboard(
       const status = !r.result ? "Skip" : r.result.pass ? "Pass" : "Fail";
       const dom = domResults[i] ? (domResults[i]!.pass ? "Pass" : "Fail") : "-";
       const domDetail = domResults[i] ? domResults[i]!.detail : "-";
-      const jump = jumpResults[i] ? (jumpResults[i]!.pass ? "Pass" : "Fail") : "-";
+      const jump = jumpResults[i]
+        ? jumpResults[i]!.pass
+          ? "Pass"
+          : "Fail"
+        : "-";
       const jumpDetail = jumpResults[i] ? jumpResults[i]!.detail : "-";
-      const perf = perfResults[i] ? (perfResults[i]!.pass ? "Pass" : "Fail") : "-";
+      const perf = perfResults[i]
+        ? perfResults[i]!.pass
+          ? "Pass"
+          : "Fail"
+        : "-";
       const perfDetail = perfResults[i] ? perfResults[i]!.detail : "-";
       return `| ${r.label} | ${status} | ${dom} | ${domDetail} | ${jump} | ${jumpDetail} | ${perf} | ${perfDetail} |`;
     }),
@@ -1707,14 +1836,14 @@ export const PlaygroundTests = () => {
   const [debug, setDebug] = React.useState(false);
   const results = useResults();
   const [domResults, setDomResults] = React.useState<
-    (({ pass: boolean; detail: string }) | null)[]
+    ({ pass: boolean; detail: string } | null)[]
   >(() => TESTS.map(() => null));
   const [jumpResults, setJumpResults] = React.useState<
-    (({ pass: boolean; detail: string }) | null)[]
+    ({ pass: boolean; detail: string } | null)[]
   >(() => TESTS.map(() => null));
-  const [perfResults, setPerfResults] = React.useState<
-    (PerfResult | null)[]
-  >(() => TESTS.map(() => null));
+  const [perfResults, setPerfResults] = React.useState<(PerfResult | null)[]>(
+    () => TESTS.map(() => null),
+  );
   const cardRefs = React.useRef<(HTMLDivElement | null)[]>([]);
 
   const filteredIndices = TESTS.map((_, i) => i).filter((i) => {
@@ -1776,7 +1905,12 @@ export const PlaygroundTests = () => {
   };
 
   const handleCopyFails = () => {
-    const hadFails = copyFailsToClipboard(results, domResults, jumpResults, perfResults);
+    const hadFails = copyFailsToClipboard(
+      results,
+      domResults,
+      jumpResults,
+      perfResults,
+    );
     setCopied(hadFails ? "fails" : "none");
     setTimeout(() => setCopied(false), 2000);
   };
@@ -1792,13 +1926,22 @@ export const PlaygroundTests = () => {
                 <span className={styles.summaryFail}> · {failed} failed</span>
               )}
               {domFailed > 0 && (
-                <span className={styles.summaryFail}> · {domFailed} DOM failed</span>
+                <span className={styles.summaryFail}>
+                  {" "}
+                  · {domFailed} DOM failed
+                </span>
               )}
               {jumpFailed > 0 && (
-                <span className={styles.summaryFail}> · {jumpFailed} JUMP failed</span>
+                <span className={styles.summaryFail}>
+                  {" "}
+                  · {jumpFailed} JUMP failed
+                </span>
               )}
               {perfFailed > 0 && (
-                <span className={styles.summaryFail}> · {perfFailed} PERF failed</span>
+                <span className={styles.summaryFail}>
+                  {" "}
+                  · {perfFailed} PERF failed
+                </span>
               )}
             </span>
             <span className={styles.version}>
@@ -1808,9 +1951,11 @@ export const PlaygroundTests = () => {
           </div>
           <div className={styles.summaryDots}>
             {results.map((r, i) => (
-              <Tooltip content={`${r.label}${r.result ? `: ${r.result.detail}` : ""}`}>
+              <Tooltip
+                key={r.label}
+                content={`${r.label}${r.result ? `: ${r.result.detail}` : ""}`}
+              >
                 <span
-                  key={r.label}
                   className={
                     !r.result
                       ? styles.dotSkip
@@ -1837,11 +1982,10 @@ export const PlaygroundTests = () => {
                 : 0;
               const diffStr = diff > 0 ? `+${diff}` : `${diff}`;
               return (
-                <Tooltip content={`${entry.name}: ${(entry.raw / 1024).toFixed(1)}kB raw · published: ${(entry.publishedGzip / 1024).toFixed(1)}kB gz`}>
-                  <span
-                    key={entry.name}
-                    className={styles.bundleEntry}
-                  >
+                <Tooltip
+                  content={`${entry.name}: ${(entry.raw / 1024).toFixed(1)}kB raw · published: ${(entry.publishedGzip / 1024).toFixed(1)}kB gz`}
+                >
+                  <span key={entry.name} className={styles.bundleEntry}>
                     {entry.name}{" "}
                     <strong>{(entry.gzip / 1024).toFixed(1)}kB</strong>
                     {diff !== 0 && (
@@ -1864,7 +2008,11 @@ export const PlaygroundTests = () => {
               className={styles.button}
               onClick={handleCopyFails}
             >
-              {copied === "fails" ? "Copied!" : copied === "none" ? "No Fails" : "Copy Fails"}
+              {copied === "fails"
+                ? "Copied!"
+                : copied === "none"
+                  ? "No Fails"
+                  : "Copy Fails"}
             </button>
             <button
               type="button"
