@@ -212,19 +212,22 @@ export function verifyAlignment(
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
-    const lineLeft = Math.min(...line.map((r) => r.left));
-    const lineRight = Math.max(...line.map((r) => r.right));
+    const lineLeft = Math.min(...line.map(({ rect }) => rect.left));
+    const lineRight = Math.max(...line.map(({ rect }) => rect.right));
+    const lineW = (lineRight - lineLeft).toFixed(1);
+    const rootW = rootRect.width.toFixed(1);
+    const texts = line.map(({ el }) => `"${el.textContent?.trim() || "?"}"`).join(" ");
 
     if (align === "left") {
       if (Math.abs(lineLeft - rootRect.left) > tolerance) {
         failures.push(
-          `line ${i + 1} not left-aligned (gap=${(lineLeft - rootRect.left).toFixed(1)}px)`,
+          `line ${i + 1} not left-aligned (gap=${(lineLeft - rootRect.left).toFixed(1)}px lineW=${lineW} rootW=${rootW}) items: ${texts}`,
         );
       }
     } else if (align === "right") {
       if (Math.abs(lineRight - rootRect.right) > tolerance) {
         failures.push(
-          `line ${i + 1} not right-aligned (gap=${(rootRect.right - lineRight).toFixed(1)}px)`,
+          `line ${i + 1} not right-aligned (gap=${(rootRect.right - lineRight).toFixed(1)}px lineW=${lineW} rootW=${rootW}) items: ${texts}`,
         );
       }
     } else if (align === "center") {
@@ -232,24 +235,24 @@ export function verifyAlignment(
       const rootMid = (rootRect.left + rootRect.right) / 2;
       if (Math.abs(lineMid - rootMid) > tolerance) {
         failures.push(
-          `line ${i + 1} not centered (off=${(lineMid - rootMid).toFixed(1)}px)`,
+          `line ${i + 1} not centered (off=${(lineMid - rootMid).toFixed(1)}px lineW=${lineW} rootW=${rootW}) items: ${texts}`,
         );
       }
     }
   }
 
   if (failures.length > 0) return { pass: false, detail: failures.join(", ") };
-  return { pass: true, detail: `${align}-aligned ok` };
+  return { pass: true, detail: `${align}-aligned ok (${lines.length} lines)` };
 }
 
-export function getVisualLines(root: HTMLElement): DOMRect[][] {
+export function getVisualLines(root: HTMLElement): { rect: DOMRect; el: HTMLElement }[][] {
   const items = root.querySelectorAll<HTMLElement>(
     "[torph-item]:not([torph-exiting]):not(br)",
   );
   if (items.length === 0) return [];
 
-  const lines: DOMRect[][] = [];
-  let currentLine: DOMRect[] = [];
+  const lines: { rect: DOMRect; el: HTMLElement }[][] = [];
+  let currentLine: { rect: DOMRect; el: HTMLElement }[] = [];
   let lastTop = -Infinity;
 
   items.forEach((item) => {
@@ -259,7 +262,7 @@ export function getVisualLines(root: HTMLElement): DOMRect[][] {
       lines.push(currentLine);
       currentLine = [];
     }
-    currentLine.push(r);
+    currentLine.push({ rect: r, el: item });
     lastTop = r.top;
   });
   if (currentLine.length > 0) lines.push(currentLine);
@@ -277,7 +280,10 @@ export function verifyMultiline(
       detail: `expected ${expectedMinLines}+ lines, got ${lines.length}`,
     };
   }
-  return { pass: true, detail: `${lines.length} lines` };
+  return {
+    pass: true,
+    detail: `${lines.length} lines (${lines.map((l, i) => `L${i + 1}:${l.length}items`).join(" ")})`,
+  };
 }
 
 function isIdentityOrNone(transform: string): boolean {
@@ -516,12 +522,17 @@ export function verifyNoJump(
     if (!el) return;
     const text = el.textContent?.trim() || id;
     const isExiting = el.hasAttribute("torph-exiting");
-    const transform = getComputedStyle(el).transform;
-    const anims = el.getAnimations().length;
+    const cs = getComputedStyle(el);
+    const transform = cs.transform;
+    const opacity = parseFloat(cs.opacity);
+    const anims = el.getAnimations();
+    const animNames = anims.map((a) => (a as CSSAnimation).animationName ?? "?").join(",") || "none";
 
     if (Math.abs(dx) > tolerance || Math.abs(dy) > tolerance) {
       jumps.push(
-        `"${text}"${isExiting ? "(exit)" : ""} ${dx > 0 ? "+" : ""}${dx.toFixed(1)},${dy > 0 ? "+" : ""}${dy.toFixed(1)} tf=${transform} anims=${anims}`,
+        `"${text}"${isExiting ? "(exit)" : ""} Δ${dx > 0 ? "+" : ""}${dx.toFixed(1)},${dy > 0 ? "+" : ""}${dy.toFixed(1)}` +
+        ` opacity=${opacity.toFixed(2)} tf=${transform} anims=${anims.length}(${animNames})` +
+        ` w=${cur.width.toFixed(1)} was=${old.width.toFixed(1)}`,
       );
     }
   });
