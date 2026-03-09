@@ -12,6 +12,7 @@ const TORPH_CSS = `
 
 [${ATTR_ITEM}]:not(br) {
   display: inline-block;
+  position: relative;
   will-change: opacity, transform;
   transform: none;
   opacity: 1;

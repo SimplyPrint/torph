@@ -90,8 +90,9 @@ export function animateEnterOrPersist(
     [
       {
         transform: `translate(${startX}px, ${startY}px) scale(${isNew ? 0.95 : 1})`,
+        left: "0.01px",
       },
-      { transform: "none" },
+      { transform: "none", left: "0px" },
     ],
     {
       duration,
