@@ -1,4 +1,5 @@
 import { ATTR_EXITING, ATTR_ID } from "./constants";
+import { parseTranslate } from "./animate";
 
 export type Measures = {
   [key: string]: { x: number; y: number };
@@ -7,14 +8,19 @@ export type Measures = {
 export function measure(element: HTMLElement): Measures {
   const children = Array.from(element.children) as HTMLElement[];
   const measures: Measures = {};
+  const rootRect = element.getBoundingClientRect();
 
   children.forEach((child, index) => {
     if (child.hasAttribute(ATTR_EXITING)) return;
     if (child.tagName === "BR") return;
     const key = child.getAttribute(ATTR_ID) || `child-${index}`;
+    const rect = child.getBoundingClientRect();
+    const { tx, ty } = parseTranslate(child);
     measures[key] = {
-      x: child.offsetLeft,
-      y: child.offsetTop,
+      // Keep layout-space measurement in subpixels by removing the current
+      // transform from the visual rect instead of relying on rounded offsets.
+      x: rect.left - rootRect.left - tx,
+      y: rect.top - rootRect.top - ty,
     };
   });
 

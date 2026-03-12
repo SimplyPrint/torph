@@ -144,8 +144,9 @@ export function transitionContainerSize(
   element.style.height = "auto";
   void element.offsetWidth;
 
-  const newWidth = element.offsetWidth;
-  const newHeight = element.offsetHeight;
+  const newRect = element.getBoundingClientRect();
+  const newWidth = newRect.width;
+  const newHeight = newRect.height;
 
   // Use WAAPI to animate width/height in perfect sync with item transforms
   const anim = element.animate(

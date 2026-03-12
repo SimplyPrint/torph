@@ -139,8 +139,9 @@ export class TextMorph {
       element.style.transitionProperty = "";
     }
 
-    const oldWidth = element.offsetWidth;
-    const oldHeight = element.offsetHeight;
+    const oldRect = element.getBoundingClientRect();
+    const oldWidth = oldRect.width;
+    const oldHeight = oldRect.height;
 
     let segments: Segment[];
     let splits: Map<string, Segment[]>;
@@ -184,7 +185,7 @@ export class TextMorph {
       newIds,
     );
 
-    detachFromFlow(exiting);
+    detachFromFlow(element, exiting);
     reconcileChildren(element, oldChildren, newIds, segments);
 
     this.currentMeasures = measure(this.element);

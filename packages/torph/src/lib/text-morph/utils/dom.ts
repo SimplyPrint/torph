@@ -1,12 +1,11 @@
 import type { Segment } from "./segment";
 import { ATTR_EXITING, ATTR_ID, ATTR_ITEM } from "./constants";
 
-export function detachFromFlow(elements: HTMLElement[]) {
-  // Snapshot visual positions BEFORE removing BRs so layout hasn't shifted.
-  // Use getBoundingClientRect for sub-pixel accuracy that includes all
-  // transforms (translate AND scale) from in-progress animations.
-  const root = elements[0]?.parentElement;
-  const rootRect = root?.getBoundingClientRect();
+export function detachFromFlow(
+  container: HTMLElement,
+  elements: HTMLElement[],
+) {
+  const containerRect = container.getBoundingClientRect();
   const snapshots = new Map<HTMLElement, { left: number; top: number; width: number; height: number; opacity: number }>();
   for (const child of elements) {
     if (child.tagName === "BR") continue;
@@ -14,8 +13,8 @@ export function detachFromFlow(elements: HTMLElement[]) {
     const opacity = Number(getComputedStyle(child).opacity) || 1;
     child.getAnimations().forEach((a) => a.cancel());
     snapshots.set(child, {
-      left: rootRect ? rect.left - rootRect.left : child.offsetLeft,
-      top: rootRect ? rect.top - rootRect.top : child.offsetTop,
+      left: rect.left - containerRect.left,
+      top: rect.top - containerRect.top,
       width: rect.width,
       height: rect.height,
       opacity,
