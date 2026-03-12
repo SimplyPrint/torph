@@ -15,7 +15,10 @@ export default defineComponent({
     as: { type: String, default: DEFAULT_AS },
     locale: { type: String, default: DEFAULT_TEXT_MORPH_OPTIONS.locale },
     duration: { type: Number, default: DEFAULT_TEXT_MORPH_OPTIONS.duration },
-    ease: { type: [String, Object] as any, default: DEFAULT_TEXT_MORPH_OPTIONS.ease },
+    ease: {
+      type: [String, Object] as any,
+      default: DEFAULT_TEXT_MORPH_OPTIONS.ease,
+    },
     scale: { type: Boolean, default: DEFAULT_TEXT_MORPH_OPTIONS.scale },
     debug: { type: Boolean, default: undefined },
     disabled: { type: Boolean, default: DEFAULT_TEXT_MORPH_OPTIONS.disabled },
@@ -45,7 +48,9 @@ export default defineComponent({
           disabled: props.disabled,
           respectReducedMotion: props.respectReducedMotion,
           onAnimationStart: props.onAnimationStart as (() => void) | undefined,
-          onAnimationComplete: props.onAnimationComplete as (() => void) | undefined,
+          onAnimationComplete: props.onAnimationComplete as
+            | (() => void)
+            | undefined,
         });
         controller.update(props.text);
       }
@@ -66,10 +71,17 @@ export default defineComponent({
     );
 
     return () =>
-      h(props.as, {
-        ref: containerRef,
-        class: props.class,
-        style: props.style,
-      }, (import.meta as Record<string, unknown>)?.server ? props.text : undefined);
+      h(
+        props.as,
+        {
+          ref: containerRef,
+          class: props.class,
+          style: props.style,
+        },
+
+        (import.meta as unknown as Record<string, unknown>)?.server
+          ? props.text
+          : undefined,
+      );
   },
 });
