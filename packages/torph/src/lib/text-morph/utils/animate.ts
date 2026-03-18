@@ -90,9 +90,8 @@ export function animateEnterOrPersist(
     [
       {
         transform: `translate(${startX}px, ${startY}px) scale(${isNew ? 0.95 : 1})`,
-        left: "0.01px",
       },
-      { transform: "none", left: "0px" },
+      { transform: "none" },
     ],
     {
       duration,
@@ -102,15 +101,12 @@ export function animateEnterOrPersist(
   );
 
   if (startOpacity < 1) {
-    child.animate(
-      [{ opacity: startOpacity }, { opacity: 1 }],
-      {
-        duration: fadeDuration(duration, isNew ? 0.5 : 0.25),
-        delay: isNew ? fadeDuration(duration, 0.25) : 0,
-        easing: "linear",
-        fill: "both",
-      },
-    );
+    child.animate([{ opacity: startOpacity }, { opacity: 1 }], {
+      duration: fadeDuration(duration, isNew ? 0.5 : 0.25),
+      delay: isNew ? fadeDuration(duration, 0.25) : 0,
+      easing: "linear",
+      fill: "both",
+    });
   }
 }
 
