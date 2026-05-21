@@ -1,7 +1,7 @@
 {
-  "name": "torph",
-  "version": "0.0.9",
-  "description": "Dependency-free animated text component.",
+  "name": "@simplyprint/torph",
+  "version": "0.0.9-sp.1",
+  "description": "Dependency-free animated text component. SimplyPrint fork.",
   "homepage": "https://torph.lochie.me",
   "author": "Lochie Axon",
   "license": "MIT",
@@ -9,6 +9,10 @@
     "type": "git",
     "url": "git+https://github.com/lochie/torph.git",
     "directory": "packages/torph"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "private": true
   },
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -42,9 +46,6 @@
       "require": "./dist/svelte/index.js"
     }
   },
-  "publishConfig": {
-    "access": "public"
-  },
   "scripts": {
     "build": "tsup && node scripts/build-svelte.mjs",
     "dev": "tsup --watch",
@@ -71,7 +72,7 @@
     "react": ">=18",
     "react-dom": ">=18",
     "vue": ">=3",
-    "svelte": ">=5"
+    "svelte": ">=4"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -103,7 +104,7 @@
     "prettier": "^3.0.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "svelte": "^5.0.0",
+    "svelte": "^4.2.19",
     "tsup": "^8.5.0",
     "typescript": "^5.9.3",
     "vue": "^3.3.0"
