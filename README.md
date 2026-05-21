@@ -1,5 +1,7 @@
 # Torph
 
+> **SimplyPrint fork** — published as `@simplyprint/torph` on GitHub Packages. Ports the Svelte `TextMorph` component back to Svelte 4 syntax so it runs in Svelte 4 hosts. Upstream: [lochie/torph](https://github.com/lochie/torph).
+
 Dependency-free animated text morphing component for React, Vue, Svelte, and vanilla JavaScript.
 
 ## Installation
