@@ -1,13 +1,13 @@
 {
   "name": "@simplyprint/torph",
-  "version": "0.0.9-sp.1",
+  "version": "0.0.9-sp.2",
   "description": "Dependency-free animated text component. SimplyPrint fork.",
   "homepage": "https://torph.lochie.me",
   "author": "Lochie Axon",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lochie/torph.git",
+    "url": "git+https://github.com/SimplyPrint/torph.git",
     "directory": "packages/torph"
   },
   "publishConfig": {
@@ -62,7 +62,7 @@
     "morph"
   ],
   "bugs": {
-    "url": "https://github.com/lochie/torph/issues"
+    "url": "https://github.com/SimplyPrint/torph/issues"
   },
   "sideEffects": false,
   "files": [
