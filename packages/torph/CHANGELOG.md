@@ -1,5 +1,11 @@
 # torph
 
+## 0.0.9-sp.2
+
+### Patch Changes
+
+- Normalize missing Svelte `text` props to an empty string at the component boundary.
+
 ## 0.0.9
 
 ### Patch Changes

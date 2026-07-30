@@ -4,7 +4,7 @@
   import { MorphController } from '../lib/text-morph/controller';
 
   type $$Props = Omit<TextMorphOptions, "element"> & {
-    text: string;
+    text?: string | null;
     class?: string;
     style?: string;
     as?: string;
@@ -52,7 +52,7 @@
   }
 
   $: if (mounted) {
-    controller.update(text);
+    controller.update(text ?? "");
   }
 
   onMount(() => {
